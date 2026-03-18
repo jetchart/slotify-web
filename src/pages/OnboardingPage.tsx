@@ -9,6 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2 } from 'lucide-react';
 
+function sanitizeSlug(value: string): string {
+  // Solo letras, números y guiones medios.
+  // Convertimos tildes/diacríticos a ASCII y normalizamos separadores a `-`.
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+}
+
 const TIMEZONES = [
   'America/Argentina/Buenos_Aires',
   'America/Argentina/Cordoba',
@@ -48,8 +62,15 @@ export default function OnboardingPage() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugTouched, setSlugTouched] = useState(false);
   const [timezone, setTimezone] = useState('America/Argentina/Buenos_Aires');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (slugTouched) return;
+    setSlug(sanitizeSlug(name));
+  }, [name, slugTouched]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +78,25 @@ export default function OnboardingPage() {
       toast.error('El nombre es obligatorio');
       return;
     }
+
+    const cleanedSlug = sanitizeSlug(slug);
+    if (!cleanedSlug) {
+      toast.error('El identificador (slug) es obligatorio');
+      return;
+    }
+    if (!/^[a-z0-9-]{1,30}$/.test(cleanedSlug)) {
+      toast.error('El identificador solo puede contener letras, números y guiones medios');
+      return;
+    }
+
     setSaving(true);
     try {
-      const business = await businessService.create({ name: name.trim(), description: description.trim() || undefined, timezone });
+      const business = await businessService.create({
+        name: name.trim(),
+        slug: cleanedSlug,
+        description: description.trim() || undefined,
+        timezone,
+      });
       setBusinessId(business.id);
       navigate('/admin', { replace: true });
       toast.success('¡Negocio creado exitosamente!');
@@ -111,6 +148,26 @@ export default function OnboardingPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ej: Canchas de padel y tenis"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="slug">Identificador (slug)</Label>
+                <Input
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    setSlug(sanitizeSlug(e.target.value));
+                  }}
+                  placeholder="Ej: club-deportivo-el-prado"
+                  required
+                  maxLength={30}
+                  pattern="^[A-Za-z0-9-]{1,30}$"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Solo letras, números y guiones medios. Máximo 30 caracteres.
+                </p>
               </div>
 
               <div className="space-y-2">

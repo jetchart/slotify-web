@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, ChevronLeft, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { businessService } from '@/services/business.service';
 
 const CUSTOMER_STORAGE_KEY = 'bookingCustomerData';
 
@@ -35,8 +36,8 @@ function saveCustomerData(data: CustomerData) {
 }
 
 export default function BusinessBookingPage() {
-  const { businessId } = useParams<{ businessId: string }>();
-  const bId = Number(businessId);
+  const { slug } = useParams<{ slug: string }>();
+  const [bId, setBId] = useState<number | null>(null);
 
   const [step, setStep] = useState<Step>('slot');
   const [resources, setResources] = useState<Resource[]>([]);
@@ -54,8 +55,43 @@ export default function BusinessBookingPage() {
   const [booking, setBooking] = useState(false);
   const [bookedSlot, setBookedSlot] = useState<Slot | null>(null);
 
+  // Resolve the business id from slug (public booking routes)
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!slug) {
+        setBId(null);
+        return;
+      }
+      try {
+        const biz = await businessService.getBySlug(slug);
+        if (cancelled) return;
+        setBId(biz.id);
+      } catch {
+        if (cancelled) return;
+        toast.error('No se encontró el negocio');
+        setBId(null);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
   // Load resources
   useEffect(() => {
+    if (!bId) {
+      setResources([]);
+      setSelectedResourceId('');
+      setLoadingResources(false);
+      return;
+    }
+
+    setLoadingResources(true);
+
     const load = async () => {
       try {
         const data = await resourcesService.getPublic(bId);

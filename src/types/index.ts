@@ -29,6 +29,7 @@ export interface User {
 export interface Business {
   id: number;
   name: string;
+  slug: string;
   timezone: string;
   description: string | null;
   userId: number;
@@ -38,6 +39,7 @@ export interface Business {
 
 export interface CreateBusinessDto {
   name: string;
+  slug: string;
   timezone: string;
   description?: string;
 }

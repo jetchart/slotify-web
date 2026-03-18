@@ -23,8 +23,8 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/:businessId" element={<BusinessBookingPage />} />
             <Route path="/book/:resourceId" element={<BookingPublicPage />} />
+            <Route path="/:slug" element={<BusinessBookingPage />} />
 
             <Route element={<AdminRoute />}>
               <Route element={<AdminLayout />}>

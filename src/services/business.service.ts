@@ -15,4 +15,9 @@ export const businessService = {
     // userId es el `sub` del JWT (email).
     return apiGet<Business>(`/businesses/by-user/${encodeURIComponent(userId)}`);
   },
+
+  async getBySlug(slug: string) {
+    // Usado por el panel público de reservas.
+    return apiGet<Business>(`/businesses/by-slug/${encodeURIComponent(slug)}`);
+  },
 };
