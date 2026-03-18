@@ -9,27 +9,31 @@ export function AdminRoute() {
   const [result, setResult] = useState<'unknown' | 'ok' | 'noUser' | 'noBusiness'>('unknown');
   const userId = useMemo(() => user?.email ?? null, [user]);
 
-  if (loading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-
   useEffect(() => {
     let cancelled = false;
-    if (!userId) {
-      setResult('noUser');
-      return;
-    }
+    const run = async () => {
+      // Keep hooks order stable: guard inside effect.
+      if (loading || !isAuthenticated) {
+        setChecking(false);
+        setResult('unknown');
+        return;
+      }
 
-    setChecking(true);
-    setResult('unknown');
+      if (!userId) {
+        setChecking(false);
+        setResult('noUser');
+        return;
+      }
 
-    businessService
-      .getByUserId(userId)
-      .then((biz) => {
+      setChecking(true);
+      setResult('unknown');
+
+      try {
+        const biz = await businessService.getByUserId(userId);
         if (cancelled) return;
         setBusinessId(biz.id);
         setResult('ok');
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);
 
@@ -43,16 +47,21 @@ export function AdminRoute() {
         }
 
         setResult('noBusiness');
-      })
-      .finally(() => {
+      } finally {
         if (cancelled) return;
         setChecking(false);
-      });
+      }
+    };
+
+    run();
 
     return () => {
       cancelled = true;
     };
-  }, [userId, logout, setBusinessId]);
+  }, [loading, isAuthenticated, userId, logout, setBusinessId]);
+
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   if (checking || result === 'unknown') return null;
   if (result === 'noUser') return <Navigate to="/login" replace />;

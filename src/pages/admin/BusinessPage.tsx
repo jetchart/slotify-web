@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { availabilityService } from '@/services/availability.service';
 import { businessService } from '@/services/business.service';
+import { resourcesService } from '@/services/resources.service';
 import { slotsService } from '@/services/slots.service';
 import type { Business, UpsertBusinessAvailabilityRuleDto } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { CalendarIcon, Plus, Save, Trash2 } from 'lucide-react';
 
 const DAY_NAMES: Record<number, string> = {
   1: 'Lunes',
@@ -39,10 +40,12 @@ export default function BusinessPage() {
   const { businessId } = useAuth();
   const [loadingRules, setLoadingRules] = useState(true);
   const [loadingBusiness, setLoadingBusiness] = useState(true);
+  const [loadingAgendas, setLoadingAgendas] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<RuleForm[]>([]);
-  const [business, setBusiness] = useState<Pick<Business, 'name' | 'description'> | null>(null);
+  const [business, setBusiness] = useState<Pick<Business, 'name' | 'description' | 'slug'> | null>(null);
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
+  const [agendasCount, setAgendasCount] = useState(0);
 
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [regenerateFrom, setRegenerateFrom] = useState(() => new Date().toISOString().split('T')[0]);
@@ -58,6 +61,7 @@ export default function BusinessPage() {
       if (!businessId) {
         setLoadingRules(false);
         setLoadingBusiness(false);
+        setLoadingAgendas(false);
         return;
       }
       // Cargamos primero las reglas y en paralelo los datos del negocio,
@@ -90,7 +94,7 @@ export default function BusinessPage() {
       const businessPromise = (async () => {
         try {
           const biz = await businessService.getById(businessId);
-          setBusiness({ name: biz.name, description: biz.description });
+          setBusiness({ name: biz.name, description: biz.description, slug: biz.slug });
         } catch {
           // Si el endpoint del negocio no existe en el backend,
           // igual mostramos días y horarios con placeholders.
@@ -100,7 +104,19 @@ export default function BusinessPage() {
         }
       })();
 
-      await Promise.all([rulesPromise, businessPromise]);
+      const agendasPromise = (async () => {
+        try {
+          const resources = await resourcesService.getAll(businessId);
+          setAgendasCount(resources.length);
+        } catch {
+          // Si el backend falla, no bloqueamos la pantalla del panel.
+          setAgendasCount(0);
+        } finally {
+          setLoadingAgendas(false);
+        }
+      })();
+
+      await Promise.all([rulesPromise, businessPromise, agendasPromise]);
     };
     load();
   }, [businessId, defaultWeekdayRules]);
@@ -175,6 +191,16 @@ export default function BusinessPage() {
         <p className="text-sm text-muted-foreground">
           {business?.description?.trim() ? business.description : 'Sin descripción'}
         </p>
+
+        {!loadingAgendas && agendasCount > 0 && business?.slug && (
+          <div className="mt-3">
+            <Button asChild variant="link" size="sm">
+              <a href={`/${business.slug}`} target="_blank" rel="noreferrer noopener">
+                <CalendarIcon/>Ver como cliente
+              </a>
+            </Button>
+          </div>
+        )}
       </div>
 
       {!businessId || loadingBusiness ? null : (
