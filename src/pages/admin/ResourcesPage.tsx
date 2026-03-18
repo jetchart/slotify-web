@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { resourcesService } from '@/services/resources.service';
+import { availabilityService } from '@/services/availability.service';
 import type { Resource, CreateResourceDto, UpdateResourceDto } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +14,17 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, Clock, CalendarClock } from 'lucide-react';
+import { Plus, Pencil, CalendarClock } from 'lucide-react';
+import ResourceAvailabilityEditor from '@/pages/admin/ResourceAvailabilityEditor';
 
 export default function ResourcesPage() {
   const { businessId } = useAuth();
   const navigate = useNavigate();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingBusinessAvailability, setLoadingBusinessAvailability] = useState(false);
+  const [hasBusinessAvailability, setHasBusinessAvailability] = useState<boolean>(true);
+  const [expandedResourceId, setExpandedResourceId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Resource | null>(null);
   const [form, setForm] = useState({ name: '', slotMinutes: 60, bufferMinutes: 0 });
@@ -38,6 +43,24 @@ export default function ResourcesPage() {
   };
 
   useEffect(() => { fetchResources(); }, [businessId]);
+
+  useEffect(() => {
+    const loadBusinessAvailability = async () => {
+      if (!businessId) return;
+      setLoadingBusinessAvailability(true);
+      try {
+        const rules = await availabilityService.getBusinessRules(businessId);
+        setHasBusinessAvailability(rules.length > 0);
+      } catch {
+        // Si falla el check, no bloqueamos la UI.
+        setHasBusinessAvailability(true);
+      } finally {
+        setLoadingBusinessAvailability(false);
+      }
+    };
+
+    loadBusinessAvailability();
+  }, [businessId]);
 
   const openCreate = () => {
     setEditing(null);
@@ -77,7 +100,8 @@ export default function ResourcesPage() {
         const created = await resourcesService.create(dto);
         toast.success('Agenda creada');
         setDialogOpen(false);
-        navigate(`/admin/resources/${created.id}/availability`);
+        setExpandedResourceId(created.id);
+        fetchResources();
         return;
       }
       setDialogOpen(false);
@@ -102,6 +126,17 @@ export default function ResourcesPage() {
         </Button>
       </div>
 
+      {!loadingBusinessAvailability && !hasBusinessAvailability && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4">
+          <p className="text-sm font-medium text-destructive">
+            Primero tenes que definir los dias y horarios en Mi Negocio
+          </p>
+          <p className="text-xs text-destructive/80 mt-1">
+            Mientras tanto, no vas a poder editar la disponibilidad desde las agendas.
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-muted-foreground text-sm">Cargando...</p>
       ) : resources.length === 0 ? (
@@ -118,28 +153,41 @@ export default function ResourcesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {resources.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.name}</TableCell>
-                  <TableCell>{r.slotMinutes} min</TableCell>
-                  <TableCell>{r.bufferMinutes} min</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Editar">
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(`/admin/resources/${r.id}/availability`)}
-                        title="Disponibilidad"
-                      >
-                        <CalendarClock className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {resources.map((r) => {
+                const isExpanded = expandedResourceId === r.id;
+                return (
+                  <Fragment key={r.id}>
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.name}</TableCell>
+                      <TableCell>{r.slotMinutes} min</TableCell>
+                      <TableCell>{r.bufferMinutes} min</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="Editar">
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setExpandedResourceId((prev) => (prev === r.id ? null : r.id))}
+                            title={isExpanded ? 'Ocultar disponibilidad' : 'Mostrar disponibilidad'}
+                            disabled={!hasBusinessAvailability}
+                          >
+                            <CalendarClock className={`size-4 ${isExpanded ? 'rotate-180' : ''}`} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="p-4">
+                          <ResourceAvailabilityEditor resourceId={r.id} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

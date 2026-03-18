@@ -30,6 +30,7 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const STORAGE_KEY = 'userCredential';
+const CUSTOMER_STORAGE_KEY = 'bookingCustomerData';
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -68,11 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (parsed.token && !isTokenExpired(parsed.token)) {
           const payload = decodeJwtPayload(parsed.token);
           setState({
-            user: parsed.user,
+            // No persistimos businessId: siempre lo resolvemos consultando backend.
+            user: { ...parsed.user, businessId: null },
             token: parsed.token,
             isAuthenticated: true,
             isAdmin: (payload?.isAdmin as boolean) ?? false,
-            businessId: (payload?.businessId as number) ?? null,
+            businessId: null,
             loading: false,
           });
           return;
@@ -94,7 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       familyName: data.familyName,
       pictureUrl: data.pictureUrl,
       isAdmin: data.isAdmin,
-      businessId: (payload?.businessId as number) ?? null,
+      // No persistimos businessId: lo resolvemos consultando backend en los guards.
+      businessId: null,
     };
 
     const stored: StoredCredential = { token: data.jwt, user };
@@ -105,13 +108,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: data.jwt,
       isAuthenticated: true,
       isAdmin: data.isAdmin,
-      businessId: (payload?.businessId as number) ?? null,
+      businessId: null,
       loading: false,
     });
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(CUSTOMER_STORAGE_KEY);
     setState({
       user: null,
       token: null,
@@ -126,8 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       if (!prev.user || !prev.token) return prev;
       const updatedUser = { ...prev.user, businessId };
-      const stored: StoredCredential = { token: prev.token, user: updatedUser };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+      // No persistimos businessId en localStorage.
       return { ...prev, user: updatedUser, businessId };
     });
   }, []);

@@ -2,20 +2,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Box, CalendarClock, CalendarDays, Users } from 'lucide-react';
+import { Box, CalendarDays, Users, Building2 } from 'lucide-react';
 
 const sections = [
+  {
+    title: 'Mi Negocio',
+    description: 'Configurá nombre y reglas base de tu negocio.',
+    icon: Building2,
+    to: '/admin/business',
+  },
   {
     title: 'Agendas',
     description: 'Creá y gestioná canchas, salas u otras agendas reservables.',
     icon: Box,
     to: '/admin/resources',
-  },
-  {
-    title: 'Generación de Slots',
-    description: 'Generá los turnos disponibles a partir de las reglas de disponibilidad.',
-    icon: CalendarClock,
-    to: '/admin/slots',
   },
   {
     title: 'Reservas',

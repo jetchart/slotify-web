@@ -8,9 +8,9 @@ import AdminLayout from '@/layouts/AdminLayout';
 import DashboardPage from '@/pages/admin/DashboardPage';
 import ResourcesPage from '@/pages/admin/ResourcesPage';
 import AvailabilityPage from '@/pages/admin/AvailabilityPage';
-import SlotsPage from '@/pages/admin/SlotsPage';
 import BookingsPage from '@/pages/admin/BookingsPage';
 import UsersPage from '@/pages/admin/UsersPage';
+import BusinessPage from '@/pages/admin/BusinessPage';
 import BookingPublicPage from '@/pages/BookingPublicPage';
 import BusinessBookingPage from '@/pages/BusinessBookingPage';
 import OnboardingPage from '@/pages/OnboardingPage';
@@ -29,9 +29,9 @@ export default function App() {
             <Route element={<AdminRoute />}>
               <Route element={<AdminLayout />}>
                 <Route path="/admin" element={<DashboardPage />} />
+                <Route path="/admin/business" element={<BusinessPage />} />
                 <Route path="/admin/resources" element={<ResourcesPage />} />
                 <Route path="/admin/resources/:id/availability" element={<AvailabilityPage />} />
-                <Route path="/admin/slots" element={<SlotsPage />} />
                 <Route path="/admin/bookings" element={<BookingsPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
               </Route>

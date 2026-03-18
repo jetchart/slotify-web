@@ -6,8 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   LayoutDashboard,
+  Building2,
   Box,
-  CalendarClock,
   CalendarDays,
   Users,
   LogOut,
@@ -16,8 +16,8 @@ import {
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin/business', label: 'Mi Negocio', icon: Building2 },
   { to: '/admin/resources', label: 'Agendas', icon: Box },
-  { to: '/admin/slots', label: 'Slots', icon: CalendarClock },
   { to: '/admin/bookings', label: 'Reservas', icon: CalendarDays },
   { to: '/admin/users', label: 'Usuarios', icon: Users },
 ];

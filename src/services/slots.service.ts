@@ -9,4 +9,18 @@ export const slotsService = {
   generate(dto: GenerateSlotsDto) {
     return apiPost<{ inserted: number }>('/admin/slots/generate', dto);
   },
+
+  regenerateForResource(resourceId: number, dto: { from: string }) {
+    return apiPost<{ deletedSlots: number; insertedSlots: number }>(
+      `/admin/slots/resources/${resourceId}/regenerate`,
+      dto,
+    );
+  },
+
+  regenerateForBusiness(businessId: number, dto: { from: string }) {
+    return apiPost<{ deletedSlots: number; insertedSlots: number }>(
+      `/admin/slots/businesses/${businessId}/regenerate`,
+      dto,
+    );
+  },
 };

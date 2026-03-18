@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { businessService } from '@/services/business.service';
@@ -25,11 +25,27 @@ const TIMEZONES = [
 ];
 
 export default function OnboardingPage() {
-  const { setBusinessId, logout, businessId } = useAuth();
+  const { setBusinessId, logout, isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
 
-  if (businessId) {
-    return <Navigate to="/admin" replace />;
-  }
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    (async () => {
+      try {
+        const biz = await businessService.getByUserId(user.email);
+        setBusinessId(biz.id);
+        navigate('/admin', { replace: true });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('User not found')) {
+          logout();
+          navigate('/login', { replace: true });
+        }
+      }
+    })();
+  }, [isAuthenticated, user, logout, navigate, setBusinessId]);
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [timezone, setTimezone] = useState('America/Argentina/Buenos_Aires');
@@ -45,6 +61,7 @@ export default function OnboardingPage() {
     try {
       const business = await businessService.create({ name: name.trim(), description: description.trim() || undefined, timezone });
       setBusinessId(business.id);
+      navigate('/admin', { replace: true });
       toast.success('¡Negocio creado exitosamente!');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al crear el negocio');
@@ -58,10 +75,10 @@ export default function OnboardingPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="rounded-full bg-primary/10 p-4">
-              <Building2 className="size-8 text-primary" />
+            <div className="mb-4">
+              <img src="/slotify.png" alt="Slotify Logo" className="h-24 w-auto" />
+              </div>
             </div>
-          </div>
           <h1 className="text-2xl font-semibold tracking-tight">Configurá tu negocio</h1>
           <p className="text-muted-foreground text-sm">
             Para empezar a usar Slotify, primero necesitamos los datos de tu negocio.

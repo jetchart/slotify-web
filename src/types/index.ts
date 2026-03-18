@@ -60,6 +60,42 @@ export interface AvailabilityRule {
   createdAt: string;
 }
 
+export interface BusinessAvailabilityRule {
+  id: number;
+  businessId: number;
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+  createdAt: string;
+}
+
+export interface ResourceAvailabilityEffectiveRule {
+  id: number;
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+  source: 'business' | 'resource' | string;
+}
+
+export interface ResourceAvailabilityDayOverride {
+  id: number;
+  resourceId: number;
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+  createdAt?: string;
+}
+
+export interface AvailabilityBlock {
+  id: number;
+  businessId?: number;
+  resourceId?: number | null;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  reason?: string | null;
+  createdAt?: string;
+}
+
 export interface Slot {
   id: number;
   businessId: number;
@@ -113,6 +149,29 @@ export interface UpsertAvailabilityRuleDto {
   dayOfWeek: number;
   startLocalTime: string;
   endLocalTime: string;
+}
+
+export interface UpsertBusinessAvailabilityRuleDto {
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+}
+
+export interface UpsertResourceDayOverrideDto {
+  dayOfWeek: number;
+  // Para overrides de recurso:
+  // - omit ranges => hereda baseline (business o legacy fallback)
+  // - ranges => override abierto con esos rangos
+  // - isClosed=true => día cerrado (no se usa en el panel actual, pero lo soporta el backend)
+  isClosed?: boolean;
+  ranges?: { startLocalTime: string; endLocalTime: string }[];
+}
+
+export interface CreateAvailabilityBlockDto {
+  startsAtUtc: string;
+  endsAtUtc: string;
+  reason?: string | null;
+  resourceId?: number;
 }
 
 export interface GenerateSlotsDto {

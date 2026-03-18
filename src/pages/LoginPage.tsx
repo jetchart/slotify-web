@@ -5,12 +5,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
-  const { login, isAuthenticated, businessId } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (isAuthenticated) {
-    return <Navigate to={businessId ? '/admin' : '/onboarding'} replace />;
+    // El guard de admin resuelve si hay business o si hay que ir a onboarding.
+    return <Navigate to="/admin" replace />;
   }
 
   const handleSuccess = async (credentialResponse: { credential?: string }) => {
