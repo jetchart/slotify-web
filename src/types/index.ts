@@ -107,6 +107,10 @@ export interface Slot {
   status: SlotStatus;
   createdAt: string;
   isBooked?: boolean;
+  // En el endpoint público de slots, el backend devuelve el booking y el customer asociados
+  // cuando el slot está reservado.
+  booking?: Booking;
+  customer?: Customer;
 }
 
 export interface Booking {

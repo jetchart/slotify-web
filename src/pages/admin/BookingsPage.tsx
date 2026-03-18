@@ -68,7 +68,12 @@ export default function BookingsPage() {
     if (!cancellingSlot) return;
     setCancelling(true);
     try {
-      await bookingsService.cancel(cancellingSlot.id);
+      const bookingId = cancellingSlot.booking?.id;
+      if (!bookingId) {
+        throw new Error('No se encontró bookingId para cancelar');
+      }
+
+      await bookingsService.cancel(bookingId);
       toast.success('Reserva cancelada');
       setCancelDialogOpen(false);
       fetchSlots();
@@ -143,7 +148,7 @@ export default function BookingsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {slot.isBooked && (
+                    {slot.isBooked && slot.booking?.id && (
                       <Button
                         variant="destructive"
                         size="sm"
