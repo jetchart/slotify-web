@@ -5,13 +5,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isAdmin } = useAuth();
+  const { login, isAuthenticated, businessId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Una vez autenticado, el re-render de este componente hará la redirección
   if (isAuthenticated) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={businessId ? '/admin' : '/onboarding'} replace />;
   }
 
   const handleSuccess = async (credentialResponse: { credential?: string }) => {
