@@ -31,7 +31,7 @@ export default function ResourcesPage() {
       const data = await resourcesService.getAll(businessId);
       setResources(data);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al cargar recursos');
+      toast.error(err instanceof Error ? err.message : 'Error al cargar agendas');
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export default function ResourcesPage() {
           bufferMinutes: form.bufferMinutes,
         };
         await resourcesService.update(editing.id, dto);
-        toast.success('Recurso actualizado');
+        toast.success('Agenda actualizada');
       } else {
         if (!businessId) return;
         const dto: CreateResourceDto = {
@@ -75,7 +75,7 @@ export default function ResourcesPage() {
           bufferMinutes: form.bufferMinutes,
         };
         const created = await resourcesService.create(dto);
-        toast.success('Recurso creado');
+        toast.success('Agenda creada');
         setDialogOpen(false);
         navigate(`/admin/resources/${created.id}/availability`);
         return;
@@ -91,23 +91,23 @@ export default function ResourcesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Recursos</h2>
-          <p className="text-sm text-muted-foreground">Gestioná las canchas, salas o recursos disponibles para reservar.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Agendas</h2>
+          <p className="text-sm text-muted-foreground">Gestioná las canchas, salas u otras agendas disponibles para reservar.</p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="self-start sm:self-auto">
           <Plus className="size-4" />
-          Nuevo recurso
+          Nueva agenda
         </Button>
       </div>
 
       {loading ? (
         <p className="text-muted-foreground text-sm">Cargando...</p>
       ) : resources.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No hay recursos creados todavía.</p>
+        <p className="text-muted-foreground text-sm">No hay agendas creadas todavía.</p>
       ) : (
-        <div className="rounded-md border">
+        <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -148,7 +148,7 @@ export default function ResourcesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar recurso' : 'Nuevo recurso'}</DialogTitle>
+            <DialogTitle>{editing ? 'Editar agenda' : 'Nueva agenda'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -160,7 +160,7 @@ export default function ResourcesPage() {
                 placeholder="Ej: Cancha 1"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="slotMinutes">Duración del turno (min)</Label>
                 <Input

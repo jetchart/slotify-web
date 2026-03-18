@@ -11,7 +11,7 @@ import { CalendarClock } from 'lucide-react';
 export default function SlotsPage() {
   const { businessId } = useAuth();
   const [from, setFrom] = useState(() => new Date().toISOString().split('T')[0]);
-  const [days, setDays] = useState(14);
+  const [days, setDays] = useState(30);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<number | null>(null);
 
@@ -38,7 +38,7 @@ export default function SlotsPage() {
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Generación de Slots</h2>
         <p className="text-sm text-muted-foreground">
-          Generá los slots disponibles basándote en las reglas de disponibilidad de cada recurso.
+          Generá los slots disponibles basándote en las reglas de disponibilidad de cada agenda.
         </p>
       </div>
 
@@ -49,7 +49,7 @@ export default function SlotsPage() {
             Generar slots
           </CardTitle>
           <CardDescription>
-            Los slots se crean a partir de las reglas de disponibilidad configuradas en cada recurso.
+            Los slots se crean a partir de las reglas de disponibilidad configuradas en cada agenda.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

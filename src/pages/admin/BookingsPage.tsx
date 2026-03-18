@@ -83,12 +83,12 @@ export default function BookingsPage() {
         <p className="text-sm text-muted-foreground">Visualizá y gestioná las reservas existentes.</p>
       </div>
 
-      <div className="flex items-end gap-4">
-        <div className="space-y-2 w-64">
-          <Label>Recurso</Label>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+        <div className="space-y-2 flex-1">
+          <Label>Agenda</Label>
           <Select value={selectedResource} onValueChange={setSelectedResource}>
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar recurso" />
+              <SelectValue placeholder="Seleccionar agenda" />
             </SelectTrigger>
             <SelectContent>
               {resources.map((r) => (
@@ -97,20 +97,20 @@ export default function BookingsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 sm:w-44">
           <Label>Fecha</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full" />
         </div>
       </div>
 
       {loading ? (
         <p className="text-muted-foreground text-sm">Cargando...</p>
       ) : !selectedResource ? (
-        <p className="text-muted-foreground text-sm">Seleccioná un recurso para ver los slots.</p>
+        <p className="text-muted-foreground text-sm">Seleccioná una agenda para ver los slots.</p>
       ) : slots.length === 0 ? (
         <p className="text-muted-foreground text-sm">No hay slots para la fecha seleccionada.</p>
       ) : (
-        <div className="rounded-md border">
+        <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>

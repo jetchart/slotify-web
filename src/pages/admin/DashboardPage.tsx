@@ -6,8 +6,8 @@ import { Box, CalendarClock, CalendarDays, Users } from 'lucide-react';
 
 const sections = [
   {
-    title: 'Recursos',
-    description: 'Creá y gestioná canchas, salas u otros recursos reservables.',
+    title: 'Agendas',
+    description: 'Creá y gestioná canchas, salas u otras agendas reservables.',
     icon: Box,
     to: '/admin/resources',
   },

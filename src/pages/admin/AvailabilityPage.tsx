@@ -36,7 +36,7 @@ export default function AvailabilityPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const defaultWeekdayRules: RuleForm[] = [1, 2, 3, 4, 5].map((day) => ({
+  const defaultWeekdayRules: RuleForm[] = [1, 2, 3, 4, 5, 7].map((day) => ({
     dayOfWeek: day,
     startLocalTime: '09:00',
     endLocalTime: '18:00',
@@ -86,6 +86,7 @@ export default function AvailabilityPage() {
       }));
       await availabilityService.upsertRules(resourceId, dtos);
       toast.success('Reglas de disponibilidad guardadas');
+      navigate('/admin/resources');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -101,7 +102,7 @@ export default function AvailabilityPage() {
         </Button>
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Disponibilidad</h2>
-          <p className="text-sm text-muted-foreground">Recurso #{resourceId} — Configurá los horarios disponibles por día.</p>
+          <p className="text-sm text-muted-foreground">Agenda #{resourceId} — Configurá los horarios disponibles por día.</p>
         </div>
       </div>
 
@@ -109,7 +110,7 @@ export default function AvailabilityPage() {
         <p className="text-muted-foreground text-sm">Cargando...</p>
       ) : (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">Reglas de disponibilidad</CardTitle>
             <Button variant="outline" size="sm" onClick={addRule}>
               <Plus className="size-4" />
@@ -123,8 +124,8 @@ export default function AvailabilityPage() {
               </p>
             )}
             {rules.map((rule, idx) => (
-              <div key={idx} className="flex items-end gap-3">
-                <div className="space-y-1 flex-1">
+              <div key={idx} className="flex flex-col sm:flex-row sm:items-end gap-2 pb-2 border-b last:border-0 last:pb-0">
+                <div className="space-y-1 sm:flex-1">
                   <Label>Día</Label>
                   <Select
                     value={String(rule.dayOfWeek)}
@@ -140,25 +141,27 @@ export default function AvailabilityPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
-                  <Label>Desde</Label>
-                  <Input
-                    type="time"
-                    value={rule.startLocalTime}
-                    onChange={(e) => updateRule(idx, 'startLocalTime', e.target.value)}
-                  />
+                <div className="flex items-end gap-2 flex-1 sm:flex-none">
+                  <div className="space-y-1 flex-1 sm:w-32">
+                    <Label>Desde</Label>
+                    <Input
+                      type="time"
+                      value={rule.startLocalTime}
+                      onChange={(e) => updateRule(idx, 'startLocalTime', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1 flex-1 sm:w-32">
+                    <Label>Hasta</Label>
+                    <Input
+                      type="time"
+                      value={rule.endLocalTime}
+                      onChange={(e) => updateRule(idx, 'endLocalTime', e.target.value)}
+                    />
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => removeRule(idx)} className="shrink-0">
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
                 </div>
-                <div className="space-y-1">
-                  <Label>Hasta</Label>
-                  <Input
-                    type="time"
-                    value={rule.endLocalTime}
-                    onChange={(e) => updateRule(idx, 'endLocalTime', e.target.value)}
-                  />
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => removeRule(idx)}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
               </div>
             ))}
             <div className="flex justify-end pt-4">

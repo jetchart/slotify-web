@@ -24,7 +24,7 @@ export default function UsersPage() {
   }, []);
 
   const UserTable = ({ users }: { users: User[] }) => (
-    <div className="rounded-md border">
+    <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -81,7 +81,7 @@ export default function UsersPage() {
       ) : (
         <Tabs defaultValue="admins">
           <TabsList>
-            <TabsTrigger value="admins">Administradores ({admins.length})</TabsTrigger>
+            <TabsTrigger value="admins">Admins ({admins.length})</TabsTrigger>
             <TabsTrigger value="users">Usuarios ({nonAdmins.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="admins" className="mt-4">

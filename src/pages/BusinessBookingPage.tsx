@@ -62,7 +62,7 @@ export default function BusinessBookingPage() {
         setResources(data);
         if (data.length > 0) setSelectedResourceId(String(data[0].id));
       } catch {
-        toast.error('No se pudieron cargar los recursos');
+        toast.error('No se pudieron cargar las agendas');
       } finally {
         setLoadingResources(false);
       }
@@ -179,7 +179,7 @@ export default function BusinessBookingPage() {
             {/* Resource selector + date picker */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 space-y-1">
-                <Label>Recurso</Label>
+                <Label>Agenda</Label>
                 {loadingResources ? (
                   <div className="h-9 rounded-md bg-muted animate-pulse" />
                 ) : (
@@ -188,7 +188,7 @@ export default function BusinessBookingPage() {
                     onValueChange={(v) => { setSelectedResourceId(v); setSelectedSlot(null); }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccioná un recurso" />
+                      <SelectValue placeholder="Seleccioná una agenda" />
                     </SelectTrigger>
                     <SelectContent>
                       {resources.map((r) => (
@@ -273,7 +273,7 @@ export default function BusinessBookingPage() {
             {/* Summary */}
             <div className="rounded-xl border bg-muted/40 p-4 space-y-1.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Recurso</span>
+                <span className="text-muted-foreground">Agenda</span>
                 <span className="font-medium">{selectedResource.name}</span>
               </div>
               <div className="flex justify-between">
@@ -340,7 +340,7 @@ export default function BusinessBookingPage() {
             </div>
             <div className="rounded-xl border bg-muted/40 p-5 w-full max-w-sm space-y-2 text-sm text-left">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Recurso</span>
+                <span className="text-muted-foreground">Agenda</span>
                 <span className="font-medium">{selectedResource.name}</span>
               </div>
               <div className="flex justify-between">
