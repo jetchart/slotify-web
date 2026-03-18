@@ -33,7 +33,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-sm border-none shadow-none bg-transparent">
         <CardHeader className="p-0 mb-4">
-          <CardTitle className="text-center text-lg font-medium">Bienvenido</CardTitle>
+          <CardTitle className="text-center text-lg font-medium">
+            <div className="flex flex-col items-center gap-6">
+              <img src="/slotify.png" alt="Slotify Logo" className="h-24 w-auto" />
+              Bienvenido
+            </div>
+            </CardTitle>
           <CardDescription className="text-center">Iniciá sesión para continuar</CardDescription>
         </CardHeader>
         <CardContent className="p-0 flex flex-col items-center">

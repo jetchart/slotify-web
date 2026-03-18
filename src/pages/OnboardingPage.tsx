@@ -75,10 +75,10 @@ export default function OnboardingPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="mb-4">
-              <img src="/slotify.png" alt="Slotify Logo" className="h-24 w-auto" />
-              </div>
+            <div className="rounded-full bg-primary/10 p-4">
+              <Building2 className="size-8 text-primary" />
             </div>
+          </div>
           <h1 className="text-2xl font-semibold tracking-tight">Configurá tu negocio</h1>
           <p className="text-muted-foreground text-sm">
             Para empezar a usar Slotify, primero necesitamos los datos de tu negocio.
