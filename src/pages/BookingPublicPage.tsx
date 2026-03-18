@@ -78,17 +78,6 @@ export default function BookingPublicPage() {
             <p className="text-muted-foreground">
               Tu turno fue reservado exitosamente. Te enviamos los detalles a <strong>{form.customerEmail}</strong>.
             </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSuccess(false);
-                setSelectedSlot(null);
-                setForm({ customerName: '', customerEmail: '', customerPhone: '' });
-                fetchSlots();
-              }}
-            >
-              Reservar otro turno
-            </Button>
           </CardContent>
         </Card>
       </div>
