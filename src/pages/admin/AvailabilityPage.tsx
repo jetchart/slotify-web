@@ -36,16 +36,24 @@ export default function AvailabilityPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const defaultWeekdayRules: RuleForm[] = [1, 2, 3, 4, 5].map((day) => ({
+    dayOfWeek: day,
+    startLocalTime: '09:00',
+    endLocalTime: '18:00',
+  }));
+
   useEffect(() => {
     const load = async () => {
       try {
         const data = await availabilityService.getRules(resourceId);
         setRules(
-          data.map((r) => ({
-            dayOfWeek: r.dayOfWeek,
-            startLocalTime: r.startLocalTime,
-            endLocalTime: r.endLocalTime,
-          })),
+          data.length > 0
+            ? data.map((r) => ({
+                dayOfWeek: r.dayOfWeek,
+                startLocalTime: r.startLocalTime,
+                endLocalTime: r.endLocalTime,
+              }))
+            : defaultWeekdayRules,
         );
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Error');

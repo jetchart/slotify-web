@@ -74,8 +74,11 @@ export default function ResourcesPage() {
           slotMinutes: form.slotMinutes,
           bufferMinutes: form.bufferMinutes,
         };
-        await resourcesService.create(dto);
+        const created = await resourcesService.create(dto);
         toast.success('Recurso creado');
+        setDialogOpen(false);
+        navigate(`/admin/resources/${created.id}/availability`);
+        return;
       }
       setDialogOpen(false);
       fetchResources();
