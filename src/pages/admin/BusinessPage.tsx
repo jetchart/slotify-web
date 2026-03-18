@@ -42,6 +42,7 @@ export default function BusinessPage() {
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<RuleForm[]>([]);
   const [business, setBusiness] = useState<Pick<Business, 'name' | 'description'> | null>(null);
+  const [showScheduleEditor, setShowScheduleEditor] = useState(false);
 
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [regenerateFrom, setRegenerateFrom] = useState(() => new Date().toISOString().split('T')[0]);
@@ -64,15 +65,21 @@ export default function BusinessPage() {
       const rulesPromise = (async () => {
         try {
           const data = await availabilityService.getBusinessRules(businessId);
-          setRules(
-            data.length > 0
-              ? data.map((r) => ({
-                  dayOfWeek: r.dayOfWeek,
-                  startLocalTime: r.startLocalTime,
-                  endLocalTime: r.endLocalTime,
-                }))
-              : defaultWeekdayRules,
-          );
+          if (data.length > 0) {
+            setRules(
+              data.map((r) => ({
+                dayOfWeek: r.dayOfWeek,
+                startLocalTime: r.startLocalTime,
+                endLocalTime: r.endLocalTime,
+              })),
+            );
+            setShowScheduleEditor(true);
+          } else {
+            // Si aún no hay availability definida a nivel Business, pedimos al usuario
+            // que confirme la carga de defaults.
+            setRules([]);
+            setShowScheduleEditor(false);
+          }
         } catch (err: unknown) {
           toast.error(err instanceof Error ? err.message : 'Error al cargar reglas');
         } finally {
@@ -124,6 +131,7 @@ export default function BusinessPage() {
 
   const handleSave = async () => {
     if (!businessId) return;
+    if (!showScheduleEditor || rules.length === 0) return;
     setSaving(true);
     try {
       const payload: UpsertBusinessAvailabilityRuleDto[] = rules.map((r) => ({
@@ -139,6 +147,11 @@ export default function BusinessPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDefineDefaultSchedule = () => {
+    setRules(defaultWeekdayRules);
+    setShowScheduleEditor(true);
   };
 
   const handleRegenerateSlots = async () => {
@@ -168,7 +181,11 @@ export default function BusinessPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">Días y horarios</CardTitle>
-            <Button size="sm" onClick={handleSave} disabled={loadingRules || saving || !businessId}>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={loadingRules || saving || !businessId || !showScheduleEditor || rules.length === 0}
+            >
               <Save className="size-4" />
               {saving ? 'Guardando...' : 'Guardar'}
             </Button>
@@ -178,65 +195,74 @@ export default function BusinessPage() {
               <p className="text-sm text-muted-foreground">Cargando reglas...</p>
             ) : (
               <>
-                {groupedRules.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No hay reglas. Agregá al menos una.</p>
-                ) : (
-                  groupedRules.map((group) => (
-                    <div
-                      key={group.dayOfWeek}
-                      className="space-y-3 pb-2 border-b last:border-0 last:pb-0"
-                    >
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <Label className="text-base font-medium">
-                          {DAY_NAMES[group.dayOfWeek] ?? `Día ${group.dayOfWeek}`}
-                        </Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addRuleForDay(group.dayOfWeek)}
-                          disabled={loadingRules || saving}
-                        >
-                          <Plus className="size-4" />
-                          Agregar rango
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        {group.items.map(({ idx, rule }) => (
-                          <div
-                            key={idx}
-                            className="flex flex-col sm:flex-row sm:items-end gap-2"
+                {!showScheduleEditor ? (
+                  <div className="rounded-md border bg-destructive/10 p-4 space-y-3">
+                    <p className="text-sm font-medium text-destructive">
+                      Primero tenes que definir los dias y horarios en Mi Negocio
+                    </p>
+                    <Button type="button" variant="outline" onClick={handleDefineDefaultSchedule} disabled={saving}>
+                      Definir horarios/dias
+                    </Button>
+                  </div>
+                ) : groupedRules.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay reglas. Agregá al menos una.</p>
+                  ) : (
+                    groupedRules.map((group) => (
+                      <div
+                        key={group.dayOfWeek}
+                        className="space-y-3 pb-2 border-b last:border-0 last:pb-0"
+                      >
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Label className="text-base font-medium">
+                            {DAY_NAMES[group.dayOfWeek] ?? `Día ${group.dayOfWeek}`}
+                          </Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addRuleForDay(group.dayOfWeek)}
+                            disabled={loadingRules || saving}
                           >
-                            <div className="space-y-1 flex-1 sm:w-32">
-                              <Label>Desde</Label>
-                              <Input
-                                type="time"
-                                value={rule.startLocalTime}
-                                onChange={(e) => updateRule(idx, 'startLocalTime', e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-1 flex-1 sm:w-32">
-                              <Label>Hasta</Label>
-                              <Input
-                                type="time"
-                                value={rule.endLocalTime}
-                                onChange={(e) => updateRule(idx, 'endLocalTime', e.target.value)}
-                              />
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeRule(idx)}
-                              className="shrink-0"
+                            <Plus className="size-4" />
+                            Agregar rango
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {group.items.map(({ idx, rule }) => (
+                            <div
+                              key={idx}
+                              className="flex flex-col sm:flex-row sm:items-end gap-2"
                             >
-                              <Trash2 className="size-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="space-y-1 flex-1 sm:w-32">
+                                <Label>Desde</Label>
+                                <Input
+                                  type="time"
+                                  value={rule.startLocalTime}
+                                  onChange={(e) => updateRule(idx, 'startLocalTime', e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1 flex-1 sm:w-32">
+                                <Label>Hasta</Label>
+                                <Input
+                                  type="time"
+                                  value={rule.endLocalTime}
+                                  onChange={(e) => updateRule(idx, 'endLocalTime', e.target.value)}
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeRule(idx)}
+                                className="shrink-0"
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
               </>
             )}
           </CardContent>
