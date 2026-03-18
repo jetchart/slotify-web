@@ -123,6 +123,10 @@ export default function BookingsPage() {
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full" />
         </div>
       </div>
+      
+      <p className="text-muted-foreground text-sm">
+        Turnos de {selectedResource ? resources.find((r) => String(r.id) === selectedResource)?.slotMinutes : '0'} minutos
+      </p>
 
       {loading ? (
         <p className="text-muted-foreground text-sm">Cargando...</p>
@@ -143,7 +147,7 @@ export default function BookingsPage() {
             <TableBody>
               {slots.map((slot) => (
                 <TableRow key={slot.id}>
-                  <TableCell>{formatTime(slot.startsAtUtc)} – {formatTime(slot.endsAtUtc)}</TableCell>
+                  <TableCell>{formatTime(slot.startsAtUtc)}</TableCell>
                   <TableCell>
                     {slot.isBooked ? (
                       <button
