@@ -38,6 +38,7 @@ function saveCustomerData(data: CustomerData) {
 export default function BusinessBookingPage() {
   const { slug } = useParams<{ slug: string }>();
   const [bId, setBId] = useState<number | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null);
 
   const [step, setStep] = useState<Step>('slot');
   const [resources, setResources] = useState<Resource[]>([]);
@@ -62,16 +63,19 @@ export default function BusinessBookingPage() {
     const load = async () => {
       if (!slug) {
         setBId(null);
+        setBusinessName(null);
         return;
       }
       try {
         const biz = await businessService.getBySlug(slug);
         if (cancelled) return;
         setBId(biz.id);
+        setBusinessName(biz.name);
       } catch {
         if (cancelled) return;
         toast.error('No se encontró el negocio');
         setBId(null);
+        setBusinessName(null);
       }
     };
 
@@ -182,7 +186,9 @@ export default function BusinessBookingPage() {
             </Button>
           )}
           <div>
-            <h1 className="font-semibold text-lg">Reservar turno</h1>
+            <h1 className="font-semibold text-lg">
+              Reservar turno en {businessName ?? '—'}
+            </h1>
             {selectedResource && step !== 'slot' && (
               <p className="text-sm text-muted-foreground">{selectedResource.name}</p>
             )}
