@@ -35,7 +35,25 @@ api.interceptors.response.use(
       } else if (status >= 500) {
         message = 'Error del servidor. Intentalo más tarde.';
       } else if (error.response.data && typeof error.response.data === 'object') {
-        message = (error.response.data as any).message || message;
+        const data = error.response.data as any;
+
+        // Nuestro backend suele devolver:
+        // { statusCode, message: { message: string, bookings?: [...] }, path, timestamp }
+        const maybeMessage = data.message;
+        if (typeof maybeMessage === 'string') {
+          message = maybeMessage;
+        } else if (maybeMessage && typeof maybeMessage === 'object') {
+          if (typeof maybeMessage.message === 'string') {
+            message = maybeMessage.message;
+          }
+
+          // Si el backend trae reservas, mostramos la primera para hacerlo "legible".
+          if (Array.isArray(maybeMessage.bookings) && maybeMessage.bookings.length > 0) {
+            const b = maybeMessage.bookings[0];
+            const extra = b?.date && b?.startTime && b?.endTime ? ` (ej: ${b.date} ${b.startTime}-${b.endTime})` : '';
+            message = `${message}${extra}`;
+          }
+        }
       }
       return Promise.reject(new Error(message));
     }

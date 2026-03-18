@@ -32,8 +32,12 @@ const sections = [
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  const visibleSections = isAdmin === true
+    ? sections
+    : sections.filter((section) => section.to !== '/admin/users');
 
   return (
     <div className="space-y-8">
@@ -47,7 +51,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {sections.map(({ title, description, icon: Icon, to }) => (
+        {visibleSections.map(({ title, description, icon: Icon, to }) => (
           <Card key={to} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(to)}>
             <CardHeader className="flex flex-row items-start gap-4 space-y-0">
               <div className="rounded-md bg-primary/10 p-2">

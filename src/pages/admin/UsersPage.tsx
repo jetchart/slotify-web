@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Navigate } from 'react-router-dom';
 import { usersService } from '@/services/users.service';
 import type { User } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -7,13 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { useAuth } from '@/context/AuthContext';
 
 export default function UsersPage() {
+  const { isAdmin, loading: authLoading } = useAuth();
   const [admins, setAdmins] = useState<User[]>([]);
   const [nonAdmins, setNonAdmins] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isAdmin !== true) return;
+
     Promise.all([usersService.getAdmins(), usersService.getNonAdmins()])
       .then(([a, na]) => {
         setAdmins(a);
@@ -21,7 +26,10 @@ export default function UsersPage() {
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Error al cargar usuarios'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAdmin]);
+
+  if (authLoading) return null;
+  if (isAdmin !== true) return <Navigate to="/admin" replace />;
 
   const UserTable = ({ users }: { users: User[] }) => (
     <div className="overflow-x-auto rounded-md border">

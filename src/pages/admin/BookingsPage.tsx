@@ -33,7 +33,13 @@ export default function BookingsPage() {
 
   useEffect(() => {
     if (!businessId) return;
-    resourcesService.getAll(businessId).then(setResources).catch(() => {});
+    resourcesService
+      .getAll(businessId)
+      .then((data) => {
+        setResources(data);
+        if (data.length > 0) setSelectedResource(String(data[0].id));
+      })
+      .catch(() => {});
   }, [businessId]);
 
   const fetchSlots = async () => {

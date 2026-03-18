@@ -23,8 +23,12 @@ const navItems = [
 ];
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  const visibleNavItems = isAdmin === true
+    ? navItems
+    : navItems.filter((item) => item.to !== '/admin/users');
 
   const handleLogout = () => {
     logout();
@@ -39,7 +43,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <Separator />
       <nav className="flex-1 p-3 space-y-1">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
