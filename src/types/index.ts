@@ -117,6 +117,7 @@ export interface Booking {
   resourceId: number;
   slotId: number;
   customerId: number;
+  customer?: Customer;
   startsAtUtc: string;
   endsAtUtc: string;
   status: BookingStatus;

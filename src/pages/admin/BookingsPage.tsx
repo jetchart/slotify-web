@@ -8,7 +8,6 @@ import type { Resource, Slot } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -30,6 +29,9 @@ export default function BookingsPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancellingSlot, setCancellingSlot] = useState<Slot | null>(null);
   const [cancelling, setCancelling] = useState(false);
+
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsSlot, setDetailsSlot] = useState<Slot | null>(null);
 
   useEffect(() => {
     if (!businessId) return;
@@ -64,6 +66,11 @@ export default function BookingsPage() {
     setCancelDialogOpen(true);
   };
 
+  const openDetailsDialog = (slot: Slot) => {
+    setDetailsSlot(slot);
+    setDetailsDialogOpen(true);
+  };
+
   const handleCancel = async () => {
     if (!cancellingSlot) return;
     setCancelling(true);
@@ -86,6 +93,9 @@ export default function BookingsPage() {
 
   const formatTime = (utc: string) =>
     new Date(utc).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+  const formatDate = (utc: string) =>
+    new Date(utc).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <div className="space-y-6">
@@ -136,10 +146,13 @@ export default function BookingsPage() {
                   <TableCell>{formatTime(slot.startsAtUtc)} – {formatTime(slot.endsAtUtc)}</TableCell>
                   <TableCell>
                     {slot.isBooked ? (
-                      <div className="flex items-center gap-2">
-                        <Check className="size-4 text-primary" />
-                        <span className="font-medium">{slot.customer?.name ?? 'Reservado'}</span>
-                      </div>
+                      <button
+                        type="button"
+                        className="text-primary underline underline-offset-4 font-medium cursor-pointer"
+                        onClick={() => openDetailsDialog(slot)}
+                      >
+                        {slot.booking?.customer?.name ?? slot.customer?.name ?? 'Reservado'}
+                      </button>
                     ) : (
                       <span className="text-muted-foreground text-sm">Libre</span>
                     )}
@@ -176,6 +189,51 @@ export default function BookingsPage() {
               {cancelling ? 'Cancelando...' : 'Confirmar cancelación'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detailsDialogOpen} onOpenChange={(open) => {
+        setDetailsDialogOpen(open);
+        if (!open) setDetailsSlot(null);
+      }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Datos de la reserva</DialogTitle>
+          </DialogHeader>
+
+          {detailsSlot ? (
+            (() => {
+              const customer = detailsSlot.booking?.customer ?? detailsSlot.customer;
+              return (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nombre</p>
+                    <p className="font-medium">{customer?.name ?? '—'}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Turno (día y hora)</p>
+                    <p className="font-medium">
+                      {formatDate(detailsSlot.startsAtUtc)} - {formatTime(detailsSlot.startsAtUtc)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Mail</p>
+                    <p className="font-medium">{customer?.email ?? '—'}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Teléfono</p>
+                    <p className="font-medium">{customer?.phone ?? '—'}</p>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay datos para mostrar.</p>
+          )}
         </DialogContent>
       </Dialog>
     </div>
