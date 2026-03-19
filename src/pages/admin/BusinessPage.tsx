@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { availabilityService } from '@/services/availability.service';
@@ -10,9 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarIcon, Plus, Save, Trash2 } from 'lucide-react';
+import { CalendarIcon, Plus, Save, Trash2, Info } from 'lucide-react';
+import BusinessCreateForm from '@/components/BusinessCreateForm';
 import BusinessExceptionsManager from '@/components/BusinessExceptionsManager';
 import BusinessBlocksManager from '@/components/BusinessBlocksManager';
+import { useAvailability } from '@/context/AvailabilityContext';
 
 const DAY_NAMES: Record<number, string> = {
   1: 'Lunes',
@@ -30,8 +33,20 @@ interface RuleForm {
   endLocalTime: string;
 }
 
+const VALID_TABS = ['horarios', 'excepciones', 'bloqueos'] as const;
+
 export default function BusinessPage() {
   const { businessId } = useAuth();
+  const { refresh: refreshAvailability } = useAvailability();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  if (!businessId) {
+    return <BusinessCreateForm />;
+  }
+  const tabFromUrl = searchParams.get('tab');
+  const activeTab = VALID_TABS.includes(tabFromUrl as (typeof VALID_TABS)[number])
+    ? (tabFromUrl as (typeof VALID_TABS)[number])
+    : 'horarios';
   const [loadingRules, setLoadingRules] = useState(true);
   const [loadingBusiness, setLoadingBusiness] = useState(true);
   const [loadingAgendas, setLoadingAgendas] = useState(true);
@@ -152,6 +167,7 @@ export default function BusinessPage() {
         endLocalTime: r.endLocalTime,
       }));
       await availabilityService.upsertBusinessRules(businessId, payload);
+      await refreshAvailability();
       toast.success('Reglas del business guardadas');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar');
@@ -185,7 +201,23 @@ export default function BusinessPage() {
       </div>
 
       {!businessId || loadingBusiness ? null : (
-        <Tabs defaultValue="horarios" className="space-y-4">
+        <>
+          <div className="rounded-lg border bg-muted/30 p-4 flex gap-3">
+            <Info className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Configuración base del negocio</p>
+              <p>
+                Los horarios, excepciones y bloqueos que definas aquí se aplican por defecto a{' '}
+                <strong>todas las agendas</strong>. Cada agenda puede personalizar su disponibilidad
+                desde la sección Agendas.
+              </p>
+            </div>
+          </div>
+          <Tabs
+          value={activeTab}
+          onValueChange={(v) => setSearchParams({ tab: v })}
+          className="space-y-4"
+        >
           <TabsList>
             <TabsTrigger value="horarios">Horarios</TabsTrigger>
             <TabsTrigger value="excepciones">Excepciones</TabsTrigger>
@@ -318,6 +350,7 @@ export default function BusinessPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        </>
       )}
     </div>
   );

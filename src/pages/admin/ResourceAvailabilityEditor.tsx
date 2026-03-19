@@ -228,6 +228,7 @@ export default function ResourceAvailabilityEditor({
                       </div>
                     ) : businessRule ? (
                       <div className="text-sm text-muted-foreground pl-2 border-l-2 border-muted">
+                        Heredado: {businessRule.startLocalTime.slice(0, 5)} - {businessRule.endLocalTime.slice(0, 5)}
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground pl-2 border-l-2 border-muted">

@@ -3,16 +3,16 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/context/AuthContext';
 import { AdminRoute } from '@/components/AdminRoute';
+import { RequireBusiness, RequireAvailability } from '@/components/RequireBusiness';
 import LoginPage from '@/pages/LoginPage';
 import AdminLayout from '@/layouts/AdminLayout';
 import DashboardPage from '@/pages/admin/DashboardPage';
 import ResourcesPage from '@/pages/admin/ResourcesPage';
 import AvailabilityPage from '@/pages/admin/AvailabilityPage';
 import BookingsPage from '@/pages/admin/BookingsPage';
-import ExceptionsPage from '@/pages/admin/ExceptionsPage';
-import BlocksPage from '@/pages/admin/BlocksPage';
 import UsersPage from '@/pages/admin/UsersPage';
 import BusinessPage from '@/pages/admin/BusinessPage';
+import AvailabilitySummaryPage from '@/pages/admin/AvailabilitySummaryPage';
 import BookingPublicPage from '@/pages/BookingPublicPage';
 import BusinessBookingPage from '@/pages/BusinessBookingPage';
 import OnboardingPage from '@/pages/OnboardingPage';
@@ -30,13 +30,14 @@ export default function App() {
 
             <Route element={<AdminRoute />}>
               <Route element={<AdminLayout />}>
-                <Route path="/admin" element={<DashboardPage />} />
+                <Route path="/admin" element={<RequireBusiness><RequireAvailability><DashboardPage /></RequireAvailability></RequireBusiness>} />
                 <Route path="/admin/business" element={<BusinessPage />} />
-                <Route path="/admin/resources" element={<ResourcesPage />} />
-                <Route path="/admin/resources/:id/availability" element={<AvailabilityPage />} />
-                <Route path="/admin/bookings" element={<BookingsPage />} />
-                <Route path="/admin/exceptions" element={<ExceptionsPage />} />
-                <Route path="/admin/blocks" element={<BlocksPage />} />
+                <Route path="/admin/resources" element={<RequireBusiness><RequireAvailability><ResourcesPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="/admin/resources/:id/availability" element={<RequireBusiness><RequireAvailability><AvailabilityPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="/admin/availability-summary" element={<RequireBusiness><RequireAvailability><AvailabilitySummaryPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="/admin/bookings" element={<RequireBusiness><RequireAvailability><BookingsPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="/admin/exceptions" element={<Navigate to="/admin/business?tab=excepciones" replace />} />
+                <Route path="/admin/blocks" element={<Navigate to="/admin/business?tab=bloqueos" replace />} />
                 <Route path="/admin/users" element={<UsersPage />} />
               </Route>
             </Route>

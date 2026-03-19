@@ -1,13 +1,29 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { bookingsService } from '@/services/bookings.service';
+import { resourcesService } from '@/services/resources.service';
+import type { Booking, Resource } from '@/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Box, CalendarDays, Users, Building2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Box,
+  CalendarDays,
+  Users,
+  Building2,
+  CalendarCheck,
+  Calendar,
+  UserX,
+  CheckCircle,
+  Clock,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
 
 const sections = [
   {
     title: 'Mi Negocio',
-    description: 'Configurá nombre y reglas base de tu negocio.',
+    description: 'Configurá nombre, horarios base, excepciones y bloqueos del negocio.',
     icon: Building2,
     to: '/admin/business',
   },
@@ -16,6 +32,12 @@ const sections = [
     description: 'Creá y gestioná canchas, salas u otras agendas reservables.',
     icon: Box,
     to: '/admin/resources',
+  },
+  {
+    title: 'Resumen disponibilidad',
+    description: 'Vista consolidada de cómo quedaron configuradas las agendas y sus turnos.',
+    icon: CalendarCheck,
+    to: '/admin/availability-summary',
   },
   {
     title: 'Reservas',
@@ -31,13 +53,139 @@ const sections = [
   },
 ];
 
+function getTodayRange() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const today = `${y}-${m}-${day}`;
+  return { from: today, to: today };
+}
+
+function getMonthRange() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const firstDay = `${y}-${m}-01`;
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const lastDayStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+  return { from: firstDay, to: lastDayStr };
+}
+
+function formatTime(utc: string) {
+  return new Date(utc).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}
+
+interface Stats {
+  total: number;
+  noShow: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+}
+
+function computeStats(bookings: Booking[]): Stats {
+  const stats: Stats = {
+    total: 0,
+    noShow: 0,
+    confirmed: 0,
+    pending: 0,
+    cancelled: 0,
+  };
+  for (const b of bookings) {
+    stats.total++;
+    if (b.status === 'no_show') stats.noShow++;
+    else if (b.status === 'confirmed') stats.confirmed++;
+    else if (b.status === 'pending') stats.pending++;
+    else if (b.status === 'cancelled') stats.cancelled++;
+  }
+  return stats;
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  variant = 'default',
+}: {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  variant?: 'default' | 'muted' | 'destructive';
+}) {
+  const variantClasses = {
+    default: 'bg-primary/10 text-primary',
+    muted: 'bg-muted text-muted-foreground',
+    destructive: 'bg-destructive/10 text-destructive',
+  };
+  return (
+    <div className="rounded-lg border p-3 flex items-center gap-3">
+      <div className={`rounded-md p-2 ${variantClasses[variant]}`}>
+        <Icon className="size-4" />
+      </div>
+      <div>
+        <p className="text-2xl font-semibold">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, businessId } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
+  const [monthBookings, setMonthBookings] = useState<Booking[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
 
   const visibleSections = isAdmin === true
     ? sections
     : sections.filter((section) => section.to !== '/admin/users');
+
+  useEffect(() => {
+    if (!businessId) {
+      setLoading(false);
+      return;
+    }
+    const load = async () => {
+      setLoading(true);
+      try {
+        const today = getTodayRange();
+        const month = getMonthRange();
+        const [todayData, monthData, resourcesData] = await Promise.all([
+          bookingsService.getAll({ businessId, from: today.from, to: today.to }),
+          bookingsService.getAll({ businessId, from: month.from, to: month.to }),
+          resourcesService.getAll(businessId),
+        ]);
+        setTodayBookings(todayData);
+        setMonthBookings(monthData);
+        setResources(resourcesData);
+      } catch {
+        setTodayBookings([]);
+        setMonthBookings([]);
+        setResources([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [businessId]);
+
+  const todayStats = computeStats(todayBookings);
+  const monthStats = computeStats(monthBookings);
+
+  const totalForNoShowRate = monthStats.total - monthStats.cancelled;
+  const noShowRate =
+    totalForNoShowRate > 0 ? ((monthStats.noShow / totalForNoShowRate) * 100).toFixed(1) : '0';
+
+  const now = new Date();
+  const upcomingToday = todayBookings
+    .filter((b) => b.status !== 'cancelled' && new Date(b.startsAtUtc) > now)
+    .sort((a, b) => new Date(a.startsAtUtc).getTime() - new Date(b.startsAtUtc).getTime())
+    .slice(0, 5);
+
+  const resourceMap = new Map(resources.map((r) => [r.id, r.name]));
 
   return (
     <div className="space-y-8">
@@ -50,21 +198,112 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {visibleSections.map(({ title, description, icon: Icon, to }) => (
-          <Card key={to} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(to)}>
-            <CardHeader className="flex flex-row items-start gap-4 space-y-0">
-              <div className="rounded-md bg-primary/10 p-2">
-                <Icon className="size-5 text-primary" />
+      {loading ? (
+        <p className="text-muted-foreground text-sm">Cargando...</p>
+      ) : (
+        <>
+          {/* Hoy */}
+          <div>
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Calendar className="size-5" />
+              Resumen de turnos de hoy
+            </h3>
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              <StatCard label="Total" value={todayStats.total} icon={CalendarDays} />
+              <StatCard label="Ausentes" value={todayStats.noShow} icon={UserX} variant="destructive" />
+              <StatCard label="Confirmados" value={todayStats.confirmed} icon={CheckCircle} />
+              <StatCard label="Pendientes" value={todayStats.pending} icon={Clock} variant="muted" />
+              <StatCard label="Cancelados" value={todayStats.cancelled} icon={XCircle} variant="destructive" />
+            </div>
+          </div>
+
+          {/* Este mes */}
+          <div>
+            <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+              <Calendar className="size-5" />
+              Resumen de turnos del mes
+            </h3>
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              <StatCard label="Total" value={monthStats.total} icon={CalendarDays} />
+              <StatCard label="Ausentes" value={monthStats.noShow} icon={UserX} variant="destructive" />
+              <StatCard label="Confirmados" value={monthStats.confirmed} icon={CheckCircle} />
+              <StatCard label="Pendientes" value={monthStats.pending} icon={Clock} variant="muted" />
+              <StatCard label="Cancelados" value={monthStats.cancelled} icon={XCircle} variant="destructive" />
+            </div>
+            {totalForNoShowRate > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Tasa de no-show: <span className="font-medium">{noShowRate}%</span>
+              </p>
+            )}
+          </div>
+
+          {/* Próximos turnos hoy */}
+          {upcomingToday.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="size-4" />
+                  Próximos turnos hoy
+                </CardTitle>
+                <CardDescription>
+                  Los siguientes turnos que tenés por delante.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {upcomingToday.map((b) => (
+                    <li
+                      key={b.id}
+                      className="flex items-center justify-between py-2 border-b last:border-0 last:pb-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium tabular-nums">{formatTime(b.startsAtUtc)}</span>
+                        <span className="text-muted-foreground">
+                          {resourceMap.get(b.resourceId) ?? `Agenda ${b.resourceId}`}
+                        </span>
+                        <span className="font-medium">{b.customer?.name ?? '—'}</span>
+                      </div>
+                      <Badge
+                        variant={b.status === 'pending' ? 'secondary' : 'default'}
+                        className="text-xs"
+                      >
+                        {b.status === 'pending' ? 'Pendiente' : 'Confirmado'}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/bookings')}
+                  className="text-sm text-primary hover:underline mt-3"
+                >
+                  Ver todos los turnos →
+                </button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Alerta pendientes */}
+          {todayStats.pending > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex gap-3">
+              <AlertCircle className="size-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  Tenés {todayStats.pending} turno{todayStats.pending > 1 ? 's' : ''} pendiente
+                  {todayStats.pending > 1 ? 's' : ''} de confirmar hoy.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/bookings')}
+                  className="text-sm text-amber-700 dark:text-amber-300 hover:underline mt-1"
+                >
+                  Ir a Reservas →
+                </button>
               </div>
-              <div className="flex-1 space-y-1">
-                <CardTitle className="text-base">{title}</CardTitle>
-                <CardDescription>{description}</CardDescription>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

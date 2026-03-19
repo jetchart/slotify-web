@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { AvailabilityProvider, useAvailability } from '@/context/AvailabilityContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -9,8 +10,7 @@ import {
   Building2,
   Box,
   CalendarDays,
-  CalendarOff,
-  Ban,
+  CalendarCheck,
   Users,
   LogOut,
   Menu,
@@ -20,19 +20,35 @@ const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/business', label: 'Mi Negocio', icon: Building2 },
   { to: '/admin/resources', label: 'Agendas', icon: Box },
-  { to: '/admin/exceptions', label: 'Excepciones', icon: CalendarOff },
-  { to: '/admin/blocks', label: 'Bloqueos', icon: Ban },
+  { to: '/admin/availability-summary', label: 'Resumen disponibilidad', icon: CalendarCheck },
   { to: '/admin/bookings', label: 'Turnos', icon: CalendarDays },
   { to: '/admin/users', label: 'Usuarios', icon: Users },
 ];
 
+/** Items visibles cuando no hay negocio creado (solo Mi Negocio y Usuarios) */
+const ITEMS_WITHOUT_BUSINESS = ['/admin/business', '/admin/users'];
+
+/** Items que requieren días/horarios definidos en Mi Negocio */
+const ITEMS_REQUIRING_AVAILABILITY = ['/admin', '/admin/resources', '/admin/availability-summary', '/admin/bookings'];
+
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, businessId } = useAuth();
+  const { hasBusinessAvailability } = useAvailability();
   const navigate = useNavigate();
 
-  const visibleNavItems = isAdmin === true
+  let visibleNavItems = isAdmin === true
     ? navItems
     : navItems.filter((item) => item.to !== '/admin/users');
+
+  if (!businessId) {
+    visibleNavItems = visibleNavItems.filter((item) =>
+      ITEMS_WITHOUT_BUSINESS.includes(item.to),
+    );
+  } else if (hasBusinessAvailability !== true) {
+    visibleNavItems = visibleNavItems.filter(
+      (item) => !ITEMS_REQUIRING_AVAILABILITY.includes(item.to),
+    );
+  }
 
   const handleLogout = () => {
     logout();
@@ -97,6 +113,7 @@ export default function AdminLayout() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
+    <AvailabilityProvider>
     <div className="flex h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 border-r bg-sidebar text-sidebar-foreground flex-col">
@@ -127,5 +144,6 @@ export default function AdminLayout() {
         </main>
       </div>
     </div>
+    </AvailabilityProvider>
   );
 }

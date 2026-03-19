@@ -65,7 +65,6 @@ export function AdminRoute() {
 
   if (checking || result === 'unknown') return null;
   if (result === 'noUser') return <Navigate to="/login" replace />;
-  if (result === 'noBusiness') return <Navigate to="/onboarding" replace />;
 
   return <Outlet />;
 }
