@@ -232,7 +232,7 @@ export default function DashboardPage() {
             </div>
             {totalForNoShowRate > 0 && (
               <p className="text-sm text-muted-foreground mt-2">
-                Tasa de no-show: <span className="font-medium">{noShowRate}%</span>
+                Tasa de ausencia: <span className="font-medium">{noShowRate}%</span>
               </p>
             )}
           </div>
