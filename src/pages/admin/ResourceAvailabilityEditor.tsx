@@ -1,21 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { availabilityService } from '@/services/availability.service';
-import { slotsService } from '@/services/slots.service';
-import type { ResourceAvailabilityDayOverride, ResourceAvailabilityEffectiveRule } from '@/types';
+import type { AvailabilityRule } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Save, Plus, Trash2, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Save, Plus, Trash2, Info } from 'lucide-react';
+import BusinessExceptionsManager from '@/components/BusinessExceptionsManager';
+import BusinessBlocksManager from '@/components/BusinessBlocksManager';
 
 const DAY_NAMES: Record<number, string> = {
   1: 'Lunes',
@@ -27,250 +21,116 @@ const DAY_NAMES: Record<number, string> = {
   7: 'Domingo',
 };
 
-export default function ResourceAvailabilityEditor({ resourceId }: { resourceId: number }) {
+interface RuleForm {
+  id?: number;
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+}
+
+export default function ResourceAvailabilityEditor({
+  resourceId,
+  businessId,
+}: {
+  resourceId: number;
+  businessId: number;
+}) {
   const [loading, setLoading] = useState(true);
-  const [effectiveRules, setEffectiveRules] = useState<ResourceAvailabilityEffectiveRule[]>([]);
-  const [dayOverrides, setDayOverrides] = useState<ResourceAvailabilityDayOverride[]>([]);
-
-  const [savingOverrides, setSavingOverrides] = useState(false);
-  const [overridesDirty, setOverridesDirty] = useState(false);
-  const [daysToReplace, setDaysToReplace] = useState<Set<number>>(new Set());
-  const [editingDayOfWeek, setEditingDayOfWeek] = useState<number | null>(null);
-  const defaultOverrideRange = { startLocalTime: '09:00', endLocalTime: '18:00' };
-
-  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
-  const [regenerateFrom, setRegenerateFrom] = useState(() => new Date().toISOString().split('T')[0]);
-  const [regenerating, setRegenerating] = useState(false);
-
-  const groupedEffectiveRules = useMemo(() => {
-    const map = new Map<number, ResourceAvailabilityEffectiveRule[]>();
-    effectiveRules.forEach((r) => {
-      const list = map.get(r.dayOfWeek) ?? [];
-      list.push(r);
-      map.set(r.dayOfWeek, list);
-    });
-
-    return Array.from(map.entries())
-      .map(([dayOfWeek, items]) => ({
-        dayOfWeek,
-        items: items.slice().sort((a, b) => a.startLocalTime.localeCompare(b.startLocalTime)),
-      }))
-      .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-  }, [effectiveRules]);
-
-  const groupedOverrides = useMemo(() => {
-    const map = new Map<number, ResourceAvailabilityDayOverride[]>();
-    dayOverrides.forEach((o) => {
-      const list = map.get(o.dayOfWeek) ?? [];
-      list.push(o);
-      map.set(o.dayOfWeek, list);
-    });
-
-    return Array.from(map.entries())
-      .map(([dayOfWeek, items]) => ({
-        dayOfWeek,
-        items: items.slice().sort((a, b) => a.startLocalTime.localeCompare(b.startLocalTime)),
-      }))
-      .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-  }, [dayOverrides]);
-
-  const overridesByDay = useMemo(() => {
-    const m = new Map<number, ResourceAvailabilityDayOverride[]>();
-    groupedOverrides.forEach((g) => m.set(g.dayOfWeek, g.items));
-    return m;
-  }, [groupedOverrides]);
-
-  const baseByDay = useMemo(() => {
-    const m = new Map<number, ResourceAvailabilityEffectiveRule[]>();
-    groupedEffectiveRules.forEach((g) => m.set(g.dayOfWeek, g.items));
-    return m;
-  }, [groupedEffectiveRules]);
+  const [resourceRules, setResourceRules] = useState<RuleForm[]>([]);
+  const [businessRules, setBusinessRules] = useState<AvailabilityRule[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [eff, overrides] = await Promise.all([
-          availabilityService.getResourceEffectiveRules(resourceId),
-          availabilityService.getResourceDayOverrides(resourceId),
-        ]);
-        setEffectiveRules(eff);
-        setDayOverrides(overrides);
-        setOverridesDirty(false);
-        setDaysToReplace(new Set());
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
+    loadRules();
   }, [resourceId]);
 
-  const handleSaveOverrides = async () => {
-    if (!overridesDirty) return;
-    if (daysToReplace.size === 0) return;
-    setSavingOverrides(true);
+  const loadRules = async () => {
+    setLoading(true);
     try {
-      const rangesByDay = new Map<number, Array<{ startLocalTime: string; endLocalTime: string }>>();
-      for (const o of dayOverrides) {
-        const list = rangesByDay.get(o.dayOfWeek) ?? [];
-        list.push({ startLocalTime: o.startLocalTime, endLocalTime: o.endLocalTime });
-        rangesByDay.set(o.dayOfWeek, list);
-      }
+      const [resourceData, businessData] = await Promise.all([
+        availabilityService.getResourceRules(resourceId),
+        availabilityService.getBusinessRules(businessId),
+      ]);
 
-      const dtos = Array.from(daysToReplace).map((dayOfWeek) => {
-        const ranges = rangesByDay.get(dayOfWeek) ?? [];
-        // Si no quedan rangos => backend interpreta "inherit baseline".
-        if (ranges.length === 0) return { dayOfWeek };
-        return { dayOfWeek, ranges };
-      });
-
-      await availabilityService.upsertResourceDayOverrides(resourceId, dtos);
-      toast.success('Overrides guardados');
-      setRegenerateDialogOpen(true);
-
-      const latest = await availabilityService.getResourceDayOverrides(resourceId);
-      setDayOverrides(latest);
-      setOverridesDirty(false);
-      setEditingDayOfWeek(null);
-      setDaysToReplace(new Set());
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al guardar overrides');
-    } finally {
-      setSavingOverrides(false);
-    }
-  };
-
-  const handleRegenerateSlots = async () => {
-    setRegenerating(true);
-    try {
-      const res = await slotsService.regenerateForResource(resourceId, { from: regenerateFrom });
-      toast.success(`Slots regenerados. Insertados: ${res.insertedSlots}`);
-      setRegenerateDialogOpen(false);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al regenerar slots');
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
-  const addOverrideRangeForDay = (dayOfWeek: number) => {
-    setDaysToReplace((prev) => {
-      const next = new Set(prev);
-      next.add(dayOfWeek);
-      return next;
-    });
-    setDayOverrides((prev) => [
-      ...prev,
-      {
-        id: -Date.now(),
-        resourceId,
-        dayOfWeek,
-        startLocalTime: defaultOverrideRange.startLocalTime,
-        endLocalTime: defaultOverrideRange.endLocalTime,
-      },
-    ]);
-    setOverridesDirty(true);
-  };
-
-  const updateOverrideRange = (
-    overrideId: number,
-    field: 'startLocalTime' | 'endLocalTime',
-    value: string,
-  ) => {
-    setDayOverrides((prev) => prev.map((o) => (o.id === overrideId ? { ...o, [field]: value } : o)));
-    setOverridesDirty(true);
-  };
-
-  const removeOverrideRange = (overrideId: number, dayOfWeek: number) => {
-    setDaysToReplace((prev) => {
-      const next = new Set(prev);
-      next.add(dayOfWeek);
-      return next;
-    });
-    setDayOverrides((prev) => prev.filter((o) => o.id !== overrideId));
-    setOverridesDirty(true);
-  };
-
-  const removeCustomForDay = (dayOfWeek: number) => {
-    // Eliminar custom implica: mandar al backend "inherit baseline" para ese día.
-    // Esto tiene que disparar la request inmediatamente (no esperar a "Guardar").
-    (async () => {
-      setSavingOverrides(true);
-      try {
-        await availabilityService.upsertResourceDayOverrides(resourceId, [{ dayOfWeek }]);
-
-        // Recargar todo para que tanto el display de overrides como effective-rules queden consistentes.
-        const [eff, overrides] = await Promise.all([
-          availabilityService.getResourceEffectiveRules(resourceId),
-          availabilityService.getResourceDayOverrides(resourceId),
-        ]);
-        setEffectiveRules(eff);
-        setDayOverrides(overrides);
-        setOverridesDirty(false);
-        setDaysToReplace(new Set());
-        setEditingDayOfWeek(null);
-        toast.success('Custom eliminado');
-        setRegenerateDialogOpen(true);
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Error al eliminar custom');
-      } finally {
-        setSavingOverrides(false);
-      }
-    })();
-  };
-
-  useEffect(() => {
-    if (editingDayOfWeek == null) return;
-    const remaining = dayOverrides.filter((o) => o.dayOfWeek === editingDayOfWeek).length;
-    if (remaining === 0) {
-      setEditingDayOfWeek(null);
-    }
-  }, [dayOverrides, editingDayOfWeek]);
-
-  const handleCancelEditing = async () => {
-    try {
-      const latest = await availabilityService.getResourceDayOverrides(resourceId);
-      setDayOverrides(latest);
-      setOverridesDirty(false);
-      setEditingDayOfWeek(null);
-      setDaysToReplace(new Set());
-      toast.success('Cambios descartados');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al cancelar');
-    }
-  };
-
-  const startEditingDay = (dayOfWeek: number) => {
-    setEditingDayOfWeek(dayOfWeek);
-    setOverridesDirty(true);
-    setDaysToReplace((prev) => {
-      const next = new Set(prev);
-      next.add(dayOfWeek);
-      return next;
-    });
-
-    setDayOverrides((prev) => {
-      const existing = prev.filter((o) => o.dayOfWeek === dayOfWeek).length;
-      if (existing > 0) return prev;
-
-      const baseItems = baseByDay.get(dayOfWeek) ?? [];
-      const ranges: Array<{ startLocalTime: string; endLocalTime: string }> = baseItems.length > 0
-        ? baseItems.map((r) => ({ startLocalTime: r.startLocalTime, endLocalTime: r.endLocalTime }))
-        : [defaultOverrideRange];
-
-      return [
-        ...prev,
-        ...ranges.map((r, idx) => ({
-          id: -Date.now() - idx,
-          resourceId,
-          dayOfWeek,
+      setResourceRules(
+        resourceData.map((r) => ({
+          id: r.id,
+          dayOfWeek: r.dayOfWeek,
           startLocalTime: r.startLocalTime,
           endLocalTime: r.endLocalTime,
         })),
-      ];
+      );
+
+      setBusinessRules(businessData.filter((r) => !r.resourceId));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al cargar reglas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rulesByDay = useMemo(() => {
+    const map = new Map<number, RuleForm>();
+    resourceRules.forEach((rule) => {
+      map.set(rule.dayOfWeek, rule);
     });
+    return map;
+  }, [resourceRules]);
+
+  const businessRulesByDay = useMemo(() => {
+    const map = new Map<number, AvailabilityRule>();
+    businessRules.forEach((rule) => {
+      map.set(rule.dayOfWeek, rule);
+    });
+    return map;
+  }, [businessRules]);
+
+  const handleSave = async () => {
+    if (resourceRules.length === 0) {
+      toast.error('Agregá al menos una regla');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = resourceRules.map((r) => ({
+        businessId,
+        resourceId,
+        dayOfWeek: r.dayOfWeek,
+        startLocalTime: r.startLocalTime,
+        endLocalTime: r.endLocalTime,
+      }));
+      await availabilityService.upsertResourceRules(resourceId, payload);
+      toast.success('Reglas guardadas');
+      loadRules();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addOrEditRuleForDay = (dayOfWeek: number) => {
+    const existing = rulesByDay.get(dayOfWeek);
+    if (existing) {
+      return;
+    }
+
+    const inheritedRule = businessRulesByDay.get(dayOfWeek);
+    const defaultTime = inheritedRule
+      ? { startLocalTime: inheritedRule.startLocalTime, endLocalTime: inheritedRule.endLocalTime }
+      : { startLocalTime: '09:00', endLocalTime: '18:00' };
+
+    setResourceRules((prev) => [...prev, { dayOfWeek, ...defaultTime }]);
+  };
+
+  const removeRule = (dayOfWeek: number) => {
+    setResourceRules((prev) => prev.filter((r) => r.dayOfWeek !== dayOfWeek));
+  };
+
+  const updateRule = (dayOfWeek: number, field: 'startLocalTime' | 'endLocalTime', value: string) => {
+    setResourceRules((prev) =>
+      prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, [field]: value } : r)),
+    );
   };
 
   if (loading) {
@@ -279,183 +139,147 @@ export default function ResourceAvailabilityEditor({ resourceId }: { resourceId:
 
   return (
     <>
-      <Card>
-        <CardContent className="p-4">
-          <div className="space-y-4">
-          {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
-            const customItems = overridesByDay.get(dayOfWeek) ?? [];
-            const baseItems = baseByDay.get(dayOfWeek) ?? [];
-            const isCustom = customItems.length > 0;
-            const isEditing = editingDayOfWeek === dayOfWeek;
-            const appliedItems = isCustom ? customItems : baseItems;
+      <Tabs defaultValue="horarios" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="horarios">Horarios</TabsTrigger>
+          <TabsTrigger value="excepciones">Excepciones</TabsTrigger>
+          <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
+        </TabsList>
 
-            return (
-              <div
-                key={dayOfWeek}
-                className="space-y-3 pb-2 border-b last:border-0 last:pb-0"
-              >
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Label className="text-base font-medium">
-                      {DAY_NAMES[dayOfWeek] ?? `Día ${dayOfWeek}`}
-                    </Label>
-                    {isCustom && (
-                      <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        custom
-                      </span>
-                    )}
-                  </div>
+        <TabsContent value="horarios">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                Reglas de disponibilidad
+                <span className="text-xs text-muted-foreground font-normal">
+                  (1 regla por día)
+                </span>
+              </CardTitle>
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Info className="size-4 mt-0.5 shrink-0" />
+                <p>
+                  Esta agenda hereda las reglas del negocio. Agregá reglas aquí solo si necesitás
+                  horarios diferentes. Para bloquear horarios dentro del rango, usá la sección "Bloqueos".
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
+                const resourceRule = rulesByDay.get(dayOfWeek);
+                const businessRule = businessRulesByDay.get(dayOfWeek);
+                const hasCustomRule = !!resourceRule;
 
-                  {!isEditing ? (
-                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEditingDay(dayOfWeek)}
-                        disabled={savingOverrides}
-                      >
-                        {isCustom ? 'Modificar' : 'Crear override'}
-                      </Button>
-                      {isCustom && (
+                return (
+                  <div key={dayOfWeek} className="space-y-3 pb-2 border-b last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-base font-medium">
+                          {DAY_NAMES[dayOfWeek] ?? `Día ${dayOfWeek}`}
+                        </Label>
+                        {hasCustomRule && (
+                          <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary font-medium">
+                            Personalizado
+                          </span>
+                        )}
+                      </div>
+
+                      {!hasCustomRule && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => removeCustomForDay(dayOfWeek)}
-                          disabled={savingOverrides}
+                          onClick={() => addOrEditRuleForDay(dayOfWeek)}
+                          disabled={saving}
                         >
-                          <Trash2 className="size-4 text-destructive mr-2" />
-                          Eliminar custom
+                          <Plus className="size-3 mr-1" />
+                          Personalizar
                         </Button>
                       )}
                     </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Editando</span>
-                  )}
-                </div>
 
-                {!isEditing ? (
-                  appliedItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Sin rangos</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {appliedItems.map((r) => (
-                        <div
-                          key={r.id}
-                          className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-                        >
-                          <p className="font-medium truncate">
-                            {r.startLocalTime} - {r.endLocalTime}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                ) : (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      {customItems.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Sin override para este día.</p>
-                      ) : (
-                        customItems.map((o) => (
-                          <div
-                            key={o.id}
-                            className="flex flex-col sm:flex-row sm:items-end gap-2"
-                          >
-                            <div className="space-y-1 flex-1 sm:w-32">
-                              <Label>Desde</Label>
-                              <Input
-                                type="time"
-                                value={o.startLocalTime}
-                                onChange={(e) => updateOverrideRange(o.id, 'startLocalTime', e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-1 flex-1 sm:w-32">
-                              <Label>Hasta</Label>
-                              <Input
-                                type="time"
-                                value={o.endLocalTime}
-                                onChange={(e) => updateOverrideRange(o.id, 'endLocalTime', e.target.value)}
-                              />
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                        onClick={() => removeOverrideRange(o.id, dayOfWeek)}
-                              className="shrink-0"
-                            >
-                              <Trash2 className="size-4 text-destructive" />
-                            </Button>
+                    {hasCustomRule ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                          <div className="space-y-1 flex-1 sm:w-32">
+                            <Label>Desde</Label>
+                            <Input
+                              type="time"
+                              value={resourceRule.startLocalTime}
+                              onChange={(e) => updateRule(dayOfWeek, 'startLocalTime', e.target.value)}
+                            />
                           </div>
-                        ))
-                      )}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addOverrideRangeForDay(dayOfWeek)}
-                      disabled={savingOverrides}
-                    >
-                      <Plus className="size-4" />
-                      Agregar rango
-                    </Button>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button
-                        onClick={handleSaveOverrides}
-                        disabled={!overridesDirty || savingOverrides}
-                      >
-                        <Save className="size-4" />
-                        {savingOverrides ? 'Guardando...' : 'Guardar'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={handleCancelEditing}
-                        disabled={savingOverrides}
-                      >
-                        <X className="size-4" />
-                        Cancelar
-                      </Button>
-                    </div>
+                          <div className="space-y-1 flex-1 sm:w-32">
+                            <Label>Hasta</Label>
+                            <Input
+                              type="time"
+                              value={resourceRule.endLocalTime}
+                              onChange={(e) => updateRule(dayOfWeek, 'endLocalTime', e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeRule(dayOfWeek)}
+                            className="shrink-0"
+                            title="Volver a heredar del negocio"
+                          >
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : businessRule ? (
+                      <div className="text-sm text-muted-foreground pl-2 border-l-2 border-muted">
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground pl-2 border-l-2 border-muted">
+                        Cerrado
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-          </div>
-        </CardContent>
-      </Card>
+                );
+              })}
 
-      <Dialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Regenerar slots</DialogTitle>
-            <DialogDescription>
-              ¿Desea regenerar los slots según la disponibilidad actual?
-            </DialogDescription>
-          </DialogHeader>
+              {resourceRules.length > 0 && (
+                <div className="pt-4 flex justify-end">
+                  <Button onClick={handleSave} disabled={saving}>
+                    <Save className="size-4 mr-2" />
+                    {saving ? 'Guardando...' : 'Guardar cambios'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label htmlFor="regenerate-from">A partir de</Label>
-            <Input
-              id="regenerate-from"
-              type="date"
-              value={regenerateFrom}
-              onChange={(e) => setRegenerateFrom(e.target.value)}
-            />
-          </div>
+        <TabsContent value="excepciones">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Excepciones (Feriados y horarios especiales)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BusinessExceptionsManager 
+                businessId={businessId} 
+                resourceId={resourceId}
+                showResourceFilter={false}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setRegenerateDialogOpen(false)} disabled={regenerating}>
-              Omitir
-            </Button>
-            <Button type="button" onClick={handleRegenerateSlots} disabled={regenerating}>
-              {regenerating ? 'Regenerando...' : 'Aceptar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <TabsContent value="bloqueos">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Bloqueos de tiempo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BusinessBlocksManager 
+                businessId={businessId} 
+                resourceId={resourceId}
+                showResourceFilter={false}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
-

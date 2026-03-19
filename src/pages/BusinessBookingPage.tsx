@@ -8,6 +8,7 @@ import type { Resource, Slot } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, ChevronLeft, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ interface CustomerData {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  notes?: string;
 }
 
 function loadCustomerData(): CustomerData {
@@ -28,7 +30,7 @@ function loadCustomerData(): CustomerData {
     const stored = localStorage.getItem(CUSTOMER_STORAGE_KEY);
     if (stored) return JSON.parse(stored);
   } catch { /* ignore */ }
-  return { customerName: '', customerEmail: '', customerPhone: '' };
+  return { customerName: '', customerEmail: '', customerPhone: '', notes: '' };
 }
 
 function saveCustomerData(data: CustomerData) {
@@ -141,10 +143,12 @@ export default function BusinessBookingPage() {
     try {
       await bookingsService.createPublic({
         resourceId: selectedResource.id,
-        slotId: selectedSlot.id,
+        startsAtUtc: selectedSlot.startsAtUtc,
+        endsAtUtc: selectedSlot.endsAtUtc,
         customerName: form.customerName.trim(),
         customerEmail: form.customerEmail.trim(),
         customerPhone: form.customerPhone.trim(),
+        notes: form.notes?.trim(),
       });
       saveCustomerData(form);
       setBookedSlot(selectedSlot);
@@ -274,28 +278,24 @@ export default function BusinessBookingPage() {
               <p className="text-muted-foreground text-sm">No hay turnos para esta fecha.</p>
             ) : (
               <>
-                {slots.every((s) => s.isBooked || s.status !== 'open') && (
+                {slots.filter((s) => !s.isBooked).length === 0 && slots.length > 0 && (
                   <p className="text-muted-foreground text-sm">Todos los turnos están ocupados para esta fecha.</p>
                 )}
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {slots.map((slot) => {
-                    const available = !slot.isBooked && slot.status === 'open';
-                    return (
+                  {slots
+                    .filter((slot) => !slot.isBooked)
+                    .map((slot) => (
                       <button
-                        key={slot.id}
-                        disabled={!available}
+                        key={`${slot.startsAtUtc}-${slot.endsAtUtc}`}
                         onClick={() => handleSelectSlot(slot)}
                         className={cn(
                           'rounded-lg border p-3 text-sm font-medium transition-all',
-                          available
-                            ? 'hover:border-primary hover:bg-accent cursor-pointer'
-                            : 'opacity-35 cursor-not-allowed bg-muted line-through',
+                          'hover:border-primary hover:bg-accent cursor-pointer',
                         )}
                       >
                         {formatTime(slot.startsAtUtc)}
                       </button>
-                    );
-                  })}
+                    ))}
                 </div>
               </>
             )}
@@ -361,6 +361,17 @@ export default function BusinessBookingPage() {
                   onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
                   placeholder="+54 11 1234-5678"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notas (opcional)</Label>
+                <Textarea
+                  id="notes"
+                  value={form.notes || ''}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Agregar información adicional..."
+                  rows={3}
+                  maxLength={500}
                 />
               </div>
               <Button type="submit" className="w-full" size="lg" disabled={booking}>

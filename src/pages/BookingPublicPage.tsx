@@ -7,6 +7,7 @@ import type { Slot } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, CalendarDays } from 'lucide-react';
@@ -20,7 +21,7 @@ export default function BookingPublicPage() {
   const [loading, setLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
-  const [form, setForm] = useState({ customerName: '', customerEmail: '', customerPhone: '' });
+  const [form, setForm] = useState({ customerName: '', customerEmail: '', customerPhone: '', notes: '' });
   const [booking, setBooking] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -54,10 +55,12 @@ export default function BookingPublicPage() {
     try {
       await bookingsService.createPublic({
         resourceId: resId,
-        slotId: selectedSlot.id,
+        startsAtUtc: selectedSlot.startsAtUtc,
+        endsAtUtc: selectedSlot.endsAtUtc,
         customerName: form.customerName,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone,
+        notes: form.notes?.trim(),
       });
       setSuccess(true);
       toast.success('Turno reservado con éxito');
@@ -106,22 +109,24 @@ export default function BookingPublicPage() {
           <p className="text-center text-muted-foreground text-sm">Cargando horarios...</p>
         ) : slots.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm">No hay horarios disponibles para esta fecha.</p>
+        ) : slots.every((s) => s.isBooked) ? (
+          <p className="text-center text-muted-foreground text-sm">Todos los turnos están ocupados para esta fecha.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-            {slots.map((slot) => {
-              const available = !slot.isBooked && slot.status === 'open';
-              const isSelected = selectedSlot?.id === slot.id;
-              return (
-                <button
-                  key={slot.id}
-                  disabled={!available}
-                  onClick={() => setSelectedSlot(slot)}
+            {slots
+              .filter((slot) => !slot.isBooked)
+              .map((slot) => {
+                const isSelected =
+                  selectedSlot?.startsAtUtc === slot.startsAtUtc &&
+                  selectedSlot?.endsAtUtc === slot.endsAtUtc;
+                return (
+                  <button
+                    key={`${slot.startsAtUtc}-${slot.endsAtUtc}`}
+                    onClick={() => setSelectedSlot(slot)}
                   className={`rounded-lg border p-3 text-sm font-medium transition-all ${
-                    !available
-                      ? 'opacity-40 cursor-not-allowed bg-muted'
-                      : isSelected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'hover:border-primary/50 hover:bg-accent cursor-pointer'
+                    isSelected
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'hover:border-primary/50 hover:bg-accent cursor-pointer'
                   }`}
                 >
                   {formatTime(slot.startsAtUtc)}
@@ -167,6 +172,17 @@ export default function BookingPublicPage() {
                   value={form.customerPhone}
                   onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
                   placeholder="+54 11 1234-5678"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notas (opcional)</Label>
+                <Textarea
+                  id="notes"
+                  value={form.notes || ''}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Agregar información adicional..."
+                  rows={3}
+                  maxLength={500}
                 />
               </div>
               <Button onClick={handleBook} disabled={booking} className="w-full">

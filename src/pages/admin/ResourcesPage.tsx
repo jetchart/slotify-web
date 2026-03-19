@@ -181,7 +181,7 @@ export default function ResourcesPage() {
                     {isExpanded && (
                       <TableRow>
                         <TableCell colSpan={4} className="p-4">
-                          <ResourceAvailabilityEditor resourceId={r.id} />
+                          <ResourceAvailabilityEditor resourceId={r.id} businessId={businessId} />
                         </TableCell>
                       </TableRow>
                     )}

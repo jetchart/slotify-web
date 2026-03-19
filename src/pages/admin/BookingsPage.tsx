@@ -4,10 +4,12 @@ import { useAuth } from '@/context/AuthContext';
 import { resourcesService } from '@/services/resources.service';
 import { slotsService } from '@/services/slots.service';
 import { bookingsService } from '@/services/bookings.service';
-import type { Resource, Slot } from '@/types';
+import type { Resource, Slot, BookingStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { BookingStatusBadge } from '@/components/BookingStatusBadge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -30,8 +32,18 @@ export default function BookingsPage() {
   const [cancellingSlot, setCancellingSlot] = useState<Slot | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionSlot, setActionSlot] = useState<Slot | null>(null);
+  const [actionType, setActionType] = useState<'confirm' | 'no_show' | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsSlot, setDetailsSlot] = useState<Slot | null>(null);
+
+  const [editNotesDialogOpen, setEditNotesDialogOpen] = useState(false);
+  const [editNotesSlot, setEditNotesSlot] = useState<Slot | null>(null);
+  const [editNotesValue, setEditNotesValue] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     if (!businessId) return;
@@ -91,11 +103,66 @@ export default function BookingsPage() {
     }
   };
 
+  const openActionDialog = (slot: Slot, type: 'confirm' | 'no_show') => {
+    setActionSlot(slot);
+    setActionType(type);
+    setActionDialogOpen(true);
+  };
+
+  const handleAction = async () => {
+    if (!actionSlot || !actionType) return;
+    setActionLoading(true);
+    try {
+      const bookingId = actionSlot.booking?.id;
+      if (!bookingId) {
+        throw new Error('No se encontró bookingId');
+      }
+
+      const newStatus: BookingStatus = actionType === 'confirm' ? 'confirmed' : 'no_show';
+      await bookingsService.updateStatus(bookingId, newStatus);
+      toast.success(actionType === 'confirm' ? 'Reserva confirmada' : 'Marcado como ausente');
+      setActionDialogOpen(false);
+      fetchSlots();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al actualizar');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openEditNotesDialog = (slot: Slot) => {
+    setEditNotesSlot(slot);
+    setEditNotesValue(slot.booking?.notes || '');
+    setEditNotesDialogOpen(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!editNotesSlot) return;
+    setSavingNotes(true);
+    try {
+      const bookingId = editNotesSlot.booking?.id;
+      if (!bookingId) {
+        throw new Error('No se encontró bookingId');
+      }
+
+      await bookingsService.updateNotes(bookingId, editNotesValue);
+      toast.success('Notas actualizadas');
+      setEditNotesDialogOpen(false);
+      fetchSlots();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   const formatTime = (utc: string) =>
     new Date(utc).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
   const formatDate = (utc: string) =>
     new Date(utc).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const isPast = (utc: string) => new Date(utc) < new Date();
 
   return (
     <div className="space-y-6">
@@ -133,47 +200,88 @@ export default function BookingsPage() {
       ) : !selectedResource ? (
         <p className="text-muted-foreground text-sm">Seleccioná una agenda para ver los slots.</p>
       ) : slots.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No hay slots para la fecha seleccionada.</p>
+        <p className="text-muted-foreground text-sm">No hay turnos para la fecha seleccionada.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Horario</TableHead>
+                <TableHead>Cliente</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="w-[120px]">Acciones</TableHead>
+                <TableHead className="w-[200px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {slots.map((slot) => (
-                <TableRow key={slot.id}>
-                  <TableCell>{formatTime(slot.startsAtUtc)}</TableCell>
-                  <TableCell>
-                    {slot.isBooked ? (
-                      <button
-                        type="button"
-                        className="text-primary underline underline-offset-4 font-medium cursor-pointer"
-                        onClick={() => openDetailsDialog(slot)}
-                      >
-                        {slot.booking?.customer?.name ?? slot.customer?.name ?? 'Reservado'}
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Libre</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {slot.isBooked && slot.booking?.id && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openCancelDialog(slot)}
-                      >
-                        Cancelar
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {slots.map((slot) => {
+                const booking = slot.booking;
+                const customer = booking?.customer;
+                return (
+                  <TableRow key={`${slot.startsAtUtc}-${slot.endsAtUtc}`}>
+                    <TableCell>{formatTime(slot.startsAtUtc)}</TableCell>
+                    <TableCell>
+                      {slot.isBooked ? (
+                        <button
+                          type="button"
+                          className="text-primary underline underline-offset-4 font-medium cursor-pointer"
+                          onClick={() => openDetailsDialog(slot)}
+                        >
+                          {customer?.name ?? 'Reservado'}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Libre</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {booking ? (
+                        <BookingStatusBadge status={booking.status} />
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {slot.isBooked && booking && (
+                        <div className="flex gap-2">
+                          {booking.status === 'pending' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => openActionDialog(slot, 'confirm')}
+                            >
+                              Confirmar
+                            </Button>
+                          )}
+                          {booking.status === 'confirmed' && !isPast(slot.startsAtUtc) && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => openCancelDialog(slot)}
+                            >
+                              Cancelar
+                            </Button>
+                          )}
+                          {booking.status === 'confirmed' && isPast(slot.startsAtUtc) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openActionDialog(slot, 'no_show')}
+                            >
+                              Ausente
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditNotesDialog(slot)}
+                          >
+                            Notas
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -208,7 +316,8 @@ export default function BookingsPage() {
 
           {detailsSlot ? (
             (() => {
-              const customer = detailsSlot.booking?.customer ?? detailsSlot.customer;
+              const booking = detailsSlot.booking;
+              const customer = booking?.customer;
               return (
                 <div className="space-y-4">
                   <div>
@@ -232,12 +341,83 @@ export default function BookingsPage() {
                     <p className="text-sm text-muted-foreground">Teléfono</p>
                     <p className="font-medium">{customer?.phone ?? '—'}</p>
                   </div>
+
+                  {booking && (
+                    <>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Estado</p>
+                        <div className="mt-1">
+                          <BookingStatusBadge status={booking.status} />
+                        </div>
+                      </div>
+
+                      {booking.notes && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Notas</p>
+                          <p className="font-medium">{booking.notes}</p>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-sm text-muted-foreground">Última modificación</p>
+                        <p className="font-medium text-sm">
+                          {new Date(booking.updatedAt).toLocaleString('es-AR')}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()
           ) : (
             <p className="text-sm text-muted-foreground">No hay datos para mostrar.</p>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === 'confirm' ? 'Confirmar reserva' : 'Marcar como ausente'}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {actionType === 'confirm'
+              ? '¿Confirmar esta reserva? El cliente será notificado.'
+              : '¿Marcar al cliente como ausente? Esta acción quedará registrada.'}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAction} disabled={actionLoading}>
+              {actionLoading ? 'Procesando...' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editNotesDialogOpen} onOpenChange={setEditNotesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar notas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label htmlFor="edit-notes">Notas de la reserva</Label>
+            <Textarea
+              id="edit-notes"
+              value={editNotesValue}
+              onChange={(e) => setEditNotesValue(e.target.value)}
+              placeholder="Agregar notas o comentarios..."
+              rows={4}
+              maxLength={500}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditNotesDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveNotes} disabled={savingNotes}>
+              {savingNotes ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

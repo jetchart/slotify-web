@@ -1,46 +1,37 @@
 import { apiDelete, apiGet, apiPost, apiPut } from '@/api';
 import type {
   AvailabilityBlock,
-  BusinessAvailabilityRule,
+  AvailabilityRule,
   CreateAvailabilityBlockDto,
-  ResourceAvailabilityDayOverride,
-  ResourceAvailabilityEffectiveRule,
-  UpsertBusinessAvailabilityRuleDto,
-  UpsertResourceDayOverrideDto,
+  UpsertAvailabilityRuleDto,
 } from '@/types';
 
 export const availabilityService = {
-  // --- Business rules ---
+  // --- Unified availability rules (business + resource) ---
   getBusinessRules(businessId: number) {
-    return apiGet<BusinessAvailabilityRule[]>(`/admin/businesses/${businessId}/availability-rules`);
+    return apiGet<AvailabilityRule[]>(`/admin/businesses/${businessId}/availability-rules`);
   },
 
-  upsertBusinessRules(businessId: number, rules: UpsertBusinessAvailabilityRuleDto[]) {
-    return apiPut<BusinessAvailabilityRule[]>(`/admin/businesses/${businessId}/availability-rules`, rules);
-  },
-
-  // --- Resource availability (day overrides + effective rules) ---
-  getResourceEffectiveRules(resourceId: number) {
-    return apiGet<ResourceAvailabilityEffectiveRule[]>(
-      `/admin/resources/${resourceId}/availability/effective-rules`,
+  upsertBusinessRules(businessId: number, rules: UpsertAvailabilityRuleDto[]) {
+    return apiPut<AvailabilityRule[]>(
+      `/admin/businesses/${businessId}/availability-rules`,
+      rules.map((r) => ({ ...r, businessId, resourceId: null })),
     );
   },
 
-  getResourceDayOverrides(resourceId: number) {
-    return apiGet<ResourceAvailabilityDayOverride[]>(
-      `/admin/resources/${resourceId}/availability/day-overrides`,
+  getResourceRules(resourceId: number) {
+    return apiGet<AvailabilityRule[]>(`/admin/resources/${resourceId}/availability-rules`);
+  },
+
+  upsertResourceRules(resourceId: number, rules: UpsertAvailabilityRuleDto[]) {
+    return apiPut<AvailabilityRule[]>(
+      `/admin/resources/${resourceId}/availability-rules`,
+      rules,
     );
   },
 
-  upsertResourceDayOverrides(resourceId: number, overrides: UpsertResourceDayOverrideDto[]) {
-    // backend: PUT /admin/resources/:resourceId/availability (parcial por día)
-    return apiPut<{
-      overrides: ResourceAvailabilityDayOverride[];
-      rules: any[];
-    }>(
-      `/admin/resources/${resourceId}/availability`,
-      overrides,
-    );
+  deleteResourceRule(resourceId: number, ruleId: number) {
+    return apiDelete<void>(`/admin/resources/${resourceId}/availability-rules/${ruleId}`);
   },
 
   // --- Blocks ---
@@ -68,5 +59,9 @@ export const availabilityService = {
 
   createResourceBlock(resourceId: number, dto: CreateAvailabilityBlockDto) {
     return apiPost<AvailabilityBlock>(`/admin/resources/${resourceId}/availability-blocks`, dto);
+  },
+
+  deleteResourceBlock(resourceId: number, id: number) {
+    return apiDelete<void>(`/admin/resources/${resourceId}/availability-blocks/${id}`);
   },
 };

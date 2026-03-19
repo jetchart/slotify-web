@@ -9,6 +9,8 @@ import DashboardPage from '@/pages/admin/DashboardPage';
 import ResourcesPage from '@/pages/admin/ResourcesPage';
 import AvailabilityPage from '@/pages/admin/AvailabilityPage';
 import BookingsPage from '@/pages/admin/BookingsPage';
+import ExceptionsPage from '@/pages/admin/ExceptionsPage';
+import BlocksPage from '@/pages/admin/BlocksPage';
 import UsersPage from '@/pages/admin/UsersPage';
 import BusinessPage from '@/pages/admin/BusinessPage';
 import BookingPublicPage from '@/pages/BookingPublicPage';
@@ -33,6 +35,8 @@ export default function App() {
                 <Route path="/admin/resources" element={<ResourcesPage />} />
                 <Route path="/admin/resources/:id/availability" element={<AvailabilityPage />} />
                 <Route path="/admin/bookings" element={<BookingsPage />} />
+                <Route path="/admin/exceptions" element={<ExceptionsPage />} />
+                <Route path="/admin/blocks" element={<BlocksPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
               </Route>
             </Route>

@@ -4,21 +4,15 @@ import { useAuth } from '@/context/AuthContext';
 import { availabilityService } from '@/services/availability.service';
 import { businessService } from '@/services/business.service';
 import { resourcesService } from '@/services/resources.service';
-import { slotsService } from '@/services/slots.service';
-import type { Business, UpsertBusinessAvailabilityRuleDto } from '@/types';
+import type { Business, UpsertAvailabilityRuleDto } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CalendarIcon, Plus, Save, Trash2 } from 'lucide-react';
+import BusinessExceptionsManager from '@/components/BusinessExceptionsManager';
+import BusinessBlocksManager from '@/components/BusinessBlocksManager';
 
 const DAY_NAMES: Record<number, string> = {
   1: 'Lunes',
@@ -47,10 +41,6 @@ export default function BusinessPage() {
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [agendasCount, setAgendasCount] = useState(0);
 
-  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
-  const [regenerateFrom, setRegenerateFrom] = useState(() => new Date().toISOString().split('T')[0]);
-  const [regenerating, setRegenerating] = useState(false);
-
   const defaultWeekdayRules: RuleForm[] = useMemo(
     () => [1, 2, 3, 4, 5].map((day) => ({ dayOfWeek: day, startLocalTime: '09:00', endLocalTime: '18:00' })),
     [],
@@ -69,9 +59,10 @@ export default function BusinessPage() {
       const rulesPromise = (async () => {
         try {
           const data = await availabilityService.getBusinessRules(businessId);
-          if (data.length > 0) {
+          const businessRules = data.filter((r) => !r.resourceId);
+          if (businessRules.length > 0) {
             setRules(
-              data.map((r) => ({
+              businessRules.map((r) => ({
                 dayOfWeek: r.dayOfWeek,
                 startLocalTime: r.startLocalTime,
                 endLocalTime: r.endLocalTime,
@@ -79,8 +70,6 @@ export default function BusinessPage() {
             );
             setShowScheduleEditor(true);
           } else {
-            // Si aún no hay availability definida a nivel Business, pedimos al usuario
-            // que confirme la carga de defaults.
             setRules([]);
             setShowScheduleEditor(false);
           }
@@ -121,28 +110,33 @@ export default function BusinessPage() {
     load();
   }, [businessId, defaultWeekdayRules]);
 
-  const addRuleForDay = (dayOfWeek: number) => (
-    setRules((prev) => [...prev, { dayOfWeek, startLocalTime: '09:00', endLocalTime: '18:00' }])
-  );
-  const removeRule = (idx: number) => setRules((prev) => prev.filter((_, i) => i !== idx));
-  const updateRule = (idx: number, field: keyof RuleForm, value: string | number) => {
-    setRules((prev) => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  const addRuleForDay = (dayOfWeek: number) => {
+    const existing = rules.find((r) => r.dayOfWeek === dayOfWeek);
+    if (existing) {
+      toast.warning('Ya existe una regla para este día');
+      return;
+    }
+    setRules((prev) => [...prev, { dayOfWeek, startLocalTime: '09:00', endLocalTime: '18:00' }]);
+  };
+
+  const removeRule = (dayOfWeek: number) => {
+    setRules((prev) => prev.filter((r) => r.dayOfWeek !== dayOfWeek));
+  };
+
+  const updateRule = (dayOfWeek: number, field: keyof RuleForm, value: string | number) => {
+    setRules((prev) => prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, [field]: value } : r)));
   };
 
   const groupedRules = useMemo(() => {
-    const map = new Map<number, { dayOfWeek: number; items: { idx: number; rule: RuleForm }[] }>();
-    rules.forEach((rule, idx) => {
+    const map = new Map<number, RuleForm>();
+    rules.forEach((rule) => {
       if (!map.has(rule.dayOfWeek)) {
-        map.set(rule.dayOfWeek, { dayOfWeek: rule.dayOfWeek, items: [] });
+        map.set(rule.dayOfWeek, rule);
       }
-      map.get(rule.dayOfWeek)?.items.push({ idx, rule });
     });
-    const groups = Array.from(map.values());
-    for (const g of groups) {
-      g.items.sort((a, b) => a.rule.startLocalTime.localeCompare(b.rule.startLocalTime));
-    }
-    groups.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-    return groups;
+    return Array.from(map.entries())
+      .map(([dayOfWeek, rule]) => ({ dayOfWeek, rule }))
+      .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
   }, [rules]);
 
   const handleSave = async () => {
@@ -150,14 +144,15 @@ export default function BusinessPage() {
     if (!showScheduleEditor || rules.length === 0) return;
     setSaving(true);
     try {
-      const payload: UpsertBusinessAvailabilityRuleDto[] = rules.map((r) => ({
+      const payload: UpsertAvailabilityRuleDto[] = rules.map((r) => ({
+        businessId,
+        resourceId: null,
         dayOfWeek: r.dayOfWeek,
         startLocalTime: r.startLocalTime,
         endLocalTime: r.endLocalTime,
       }));
       await availabilityService.upsertBusinessRules(businessId, payload);
       toast.success('Reglas del business guardadas');
-      setRegenerateDialogOpen(true);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -168,20 +163,6 @@ export default function BusinessPage() {
   const handleDefineDefaultSchedule = () => {
     setRules(defaultWeekdayRules);
     setShowScheduleEditor(true);
-  };
-
-  const handleRegenerateSlots = async () => {
-    if (!businessId) return;
-    setRegenerating(true);
-    try {
-      const res = await slotsService.regenerateForBusiness(businessId, { from: regenerateFrom });
-      toast.success(`Slots regenerados. Insertados: ${res.insertedSlots}`);
-      setRegenerateDialogOpen(false);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al regenerar slots');
-    } finally {
-      setRegenerating(false);
-    }
   };
 
   return (
@@ -204,131 +185,140 @@ export default function BusinessPage() {
       </div>
 
       {!businessId || loadingBusiness ? null : (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-base">Días y horarios</CardTitle>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={loadingRules || saving || !businessId || !showScheduleEditor || rules.length === 0}
-            >
-              <Save className="size-4" />
-              {saving ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingRules ? (
-              <p className="text-sm text-muted-foreground">Cargando reglas...</p>
-            ) : (
-              <>
-                {!showScheduleEditor ? (
-                  <div className="rounded-md border bg-destructive/10 p-4 space-y-3">
-                    <p className="text-sm font-medium text-destructive">
-                      Primero tenes que definir los dias y horarios en Mi Negocio
-                    </p>
-                    <Button type="button" variant="outline" onClick={handleDefineDefaultSchedule} disabled={saving}>
-                      Definir horarios/dias
-                    </Button>
-                  </div>
-                ) : groupedRules.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No hay reglas. Agregá al menos una.</p>
-                  ) : (
-                    groupedRules.map((group) => (
-                      <div
-                        key={group.dayOfWeek}
-                        className="space-y-3 pb-2 border-b last:border-0 last:pb-0"
-                      >
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <Label className="text-base font-medium">
-                            {DAY_NAMES[group.dayOfWeek] ?? `Día ${group.dayOfWeek}`}
-                          </Label>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addRuleForDay(group.dayOfWeek)}
-                            disabled={loadingRules || saving}
-                          >
-                            <Plus className="size-4" />
-                            Agregar rango
-                          </Button>
-                        </div>
+        <Tabs defaultValue="horarios" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="horarios">Horarios</TabsTrigger>
+            <TabsTrigger value="excepciones">Excepciones</TabsTrigger>
+            <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
+          </TabsList>
 
-                        <div className="space-y-2">
-                          {group.items.map(({ idx, rule }) => (
-                            <div
-                              key={idx}
-                              className="flex flex-col sm:flex-row sm:items-end gap-2"
-                            >
-                              <div className="space-y-1 flex-1 sm:w-32">
-                                <Label>Desde</Label>
-                                <Input
-                                  type="time"
-                                  value={rule.startLocalTime}
-                                  onChange={(e) => updateRule(idx, 'startLocalTime', e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-1 flex-1 sm:w-32">
-                                <Label>Hasta</Label>
-                                <Input
-                                  type="time"
-                                  value={rule.endLocalTime}
-                                  onChange={(e) => updateRule(idx, 'endLocalTime', e.target.value)}
-                                />
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeRule(idx)}
-                                className="shrink-0"
-                              >
-                                <Trash2 className="size-4 text-destructive" />
-                              </Button>
+          <TabsContent value="horarios">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base">Días y horarios</CardTitle>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={loadingRules || saving || !showScheduleEditor || rules.length === 0}
+                >
+                  <Save className="size-4" />
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingRules ? (
+                  <p className="text-sm text-muted-foreground">Cargando reglas...</p>
+                ) : (
+                  <>
+                    {!showScheduleEditor ? (
+                      <div className="rounded-md border bg-destructive/10 p-4 space-y-3">
+                        <p className="text-sm font-medium text-destructive">
+                          Primero tenes que definir los dias y horarios en Mi Negocio
+                        </p>
+                        <Button type="button" variant="outline" onClick={handleDefineDefaultSchedule} disabled={saving}>
+                          Definir horarios/dias
+                        </Button>
+                      </div>
+                    ) : groupedRules.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No hay reglas. Agregá al menos una.</p>
+                      ) : (
+                        groupedRules.map(({ dayOfWeek, rule }) => (
+                          <div
+                            key={dayOfWeek}
+                            className="space-y-3 pb-2 border-b last:border-0 last:pb-0"
+                          >
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <Label className="text-base font-medium">
+                                {DAY_NAMES[dayOfWeek] ?? `Día ${dayOfWeek}`}
+                              </Label>
                             </div>
-                          ))}
+
+                            <div className="space-y-2">
+                              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                                <div className="space-y-1 flex-1 sm:w-32">
+                                  <Label>Desde</Label>
+                                  <Input
+                                    type="time"
+                                    value={rule.startLocalTime}
+                                    onChange={(e) => updateRule(dayOfWeek, 'startLocalTime', e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-1 flex-1 sm:w-32">
+                                  <Label>Hasta</Label>
+                                  <Input
+                                    type="time"
+                                    value={rule.endLocalTime}
+                                    onChange={(e) => updateRule(dayOfWeek, 'endLocalTime', e.target.value)}
+                                  />
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeRule(dayOfWeek)}
+                                  className="shrink-0"
+                                >
+                                  <Trash2 className="size-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+
+                    {showScheduleEditor && (
+                      <div className="pt-4">
+                        <Label className="text-sm text-muted-foreground mb-2 block">
+                          Agregar reglas para otros días:
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {[1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => {
+                            const hasRule = rules.some((r) => r.dayOfWeek === dayOfWeek);
+                            if (hasRule) return null;
+                            return (
+                              <Button
+                                key={dayOfWeek}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addRuleForDay(dayOfWeek)}
+                                disabled={saving}
+                              >
+                                <Plus className="size-3 mr-1" />
+                                {DAY_NAMES[dayOfWeek]}
+                              </Button>
+                            );
+                          })}
                         </div>
                       </div>
-                    ))
-                  )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="excepciones">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Excepciones (Feriados y horarios especiales)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {businessId && <BusinessExceptionsManager businessId={businessId} />}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="bloqueos">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Bloqueos de tiempo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {businessId && <BusinessBlocksManager businessId={businessId} />}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       )}
-
-      <Dialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Regenerar slots</DialogTitle>
-            <DialogDescription>
-              ¿Desea regenerar los slots según la disponibilidad actual?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            <Label htmlFor="regenerate-from">A partir de</Label>
-            <Input
-              id="regenerate-from"
-              type="date"
-              value={regenerateFrom}
-              onChange={(e) => setRegenerateFrom(e.target.value)}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setRegenerateDialogOpen(false)}
-              disabled={regenerating}
-            >
-              Omitir
-            </Button>
-            <Button type="button" onClick={handleRegenerateSlots} disabled={regenerating}>
-              {regenerating ? 'Regenerando...' : 'Aceptar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

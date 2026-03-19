@@ -9,6 +9,8 @@ import {
   Building2,
   Box,
   CalendarDays,
+  CalendarOff,
+  Ban,
   Users,
   LogOut,
   Menu,
@@ -18,7 +20,9 @@ const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/business', label: 'Mi Negocio', icon: Building2 },
   { to: '/admin/resources', label: 'Agendas', icon: Box },
-  { to: '/admin/bookings', label: 'Reservas', icon: CalendarDays },
+  { to: '/admin/exceptions', label: 'Excepciones', icon: CalendarOff },
+  { to: '/admin/blocks', label: 'Bloqueos', icon: Ban },
+  { to: '/admin/bookings', label: 'Turnos', icon: CalendarDays },
   { to: '/admin/users', label: 'Usuarios', icon: Users },
 ];
 

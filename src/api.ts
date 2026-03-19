@@ -32,6 +32,8 @@ api.interceptors.response.use(
         window.location.href = '/login';
       } else if (status === 403) {
         message = 'No tenés permisos para realizar esta acción.';
+      } else if ((status === 400 || status === 409) && error.config?.url?.includes('bookings')) {
+        message = 'Este horario ya no está disponible. Por favor, elegí otro.';
       } else if (status >= 500) {
         message = 'Error del servidor. Intentalo más tarde.';
       } else if (error.response.data && typeof error.response.data === 'object') {

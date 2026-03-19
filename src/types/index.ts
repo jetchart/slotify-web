@@ -1,13 +1,10 @@
 // --- Enums ---
 
-export enum SlotStatus {
-  OPEN = 'open',
-  BLOCKED = 'blocked',
-}
-
 export enum BookingStatus {
+  PENDING = 'pending',
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
+  NO_SHOW = 'no_show',
 }
 
 // --- Entities ---
@@ -55,75 +52,58 @@ export interface Resource {
 
 export interface AvailabilityRule {
   id: number;
-  resourceId: number;
-  dayOfWeek: number;
-  startLocalTime: string;
-  endLocalTime: string;
-  createdAt: string;
-}
-
-export interface BusinessAvailabilityRule {
-  id: number;
   businessId: number;
+  resourceId?: number | null;
   dayOfWeek: number;
   startLocalTime: string;
   endLocalTime: string;
   createdAt: string;
 }
 
-export interface ResourceAvailabilityEffectiveRule {
-  id: number;
-  dayOfWeek: number;
-  startLocalTime: string;
-  endLocalTime: string;
-  source: 'business' | 'resource' | string;
-}
-
-export interface ResourceAvailabilityDayOverride {
-  id: number;
-  resourceId: number;
-  dayOfWeek: number;
-  startLocalTime: string;
-  endLocalTime: string;
-  createdAt?: string;
-}
 
 export interface AvailabilityBlock {
   id: number;
   businessId?: number;
   resourceId?: number | null;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  reason?: string | null;
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+  description?: string | null;
   createdAt?: string;
+  deletedAt?: string | null;
 }
 
-export interface Slot {
+/** Resumen de booking incluido en cada slot (slots on-the-fly, no persisten) */
+export interface BookingSummary {
   id: number;
-  businessId: number;
-  resourceId: number;
+  status: BookingStatus;
   startsAtUtc: string;
   endsAtUtc: string;
-  status: SlotStatus;
-  createdAt: string;
-  isBooked?: boolean;
-  booking?: Booking;
   customer?: Customer;
+}
+
+/** Slot calculado en tiempo real (GET /public/resources/:id/slots?date=) */
+export interface Slot {
+  startsAtUtc: string;
+  endsAtUtc: string;
+  isBooked: boolean;
+  booking: BookingSummary | null;
 }
 
 export interface Booking {
   id: number;
   businessId: number;
   resourceId: number;
-  slotId: number;
   customerId: number;
   customer?: Customer;
   startsAtUtc: string;
   endsAtUtc: string;
   status: BookingStatus;
+  notes?: string | null;
   cancelledAt?: string | null;
   cancelledByUserId?: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Customer {
@@ -133,6 +113,23 @@ export interface Customer {
   name: string;
   phone: string;
   createdAt: string;
+}
+
+export interface Exception {
+  id: number;
+  businessId: number;
+  resourceId?: number | null;
+  dateFrom: string;
+  dateTo: string;
+  /** true = negocio cerrado, false = negocio abierto en ese horario/día */
+  isClosed: boolean;
+  /** true = excepción para un rango de horario (usa startTime/endTime), false = todo el día */
+  isBlockedRange: boolean;
+  startTime?: string | null;
+  endTime?: string | null;
+  description?: string | null;
+  createdAt: string;
+  deletedAt?: string | null;
 }
 
 // --- DTOs ---
@@ -151,46 +148,29 @@ export interface UpdateResourceDto {
 }
 
 export interface UpsertAvailabilityRuleDto {
+  businessId: number;
+  resourceId?: number | null;
   dayOfWeek: number;
   startLocalTime: string;
   endLocalTime: string;
-}
-
-export interface UpsertBusinessAvailabilityRuleDto {
-  dayOfWeek: number;
-  startLocalTime: string;
-  endLocalTime: string;
-}
-
-export interface UpsertResourceDayOverrideDto {
-  dayOfWeek: number;
-  // Para overrides de recurso:
-  // - omit ranges => hereda baseline (business o legacy fallback)
-  // - ranges => override abierto con esos rangos
-  // - isClosed=true => día cerrado (no se usa en el panel actual, pero lo soporta el backend)
-  isClosed?: boolean;
-  ranges?: { startLocalTime: string; endLocalTime: string }[];
 }
 
 export interface CreateAvailabilityBlockDto {
-  startsAtUtc: string;
-  endsAtUtc: string;
-  reason?: string | null;
-  resourceId?: number;
-}
-
-export interface GenerateSlotsDto {
-  businessId: number;
-  from: string;
-  days?: number;
+  dayOfWeek: number;
+  startLocalTime: string;
+  endLocalTime: string;
+  description?: string | null;
+  resourceId?: number | null;
 }
 
 export interface PublicCreateBookingDto {
   resourceId: number;
-  slotId: number;
+  startsAtUtc: string;
+  endsAtUtc: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  notes?: string;
 }
 
 // --- Auth ---
