@@ -160,7 +160,7 @@ export default function ExceptionsPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Excepciones</h2>
           <p className="text-sm text-muted-foreground">
-            Gestioná feriados y horarios especiales.
+            Gestioná excepciones como feriados, vacaciones, horarios especiales, etc.
           </p>
         </div>
         <Button onClick={openCreateDialog}>
@@ -175,7 +175,7 @@ export default function ExceptionsPage() {
         <div className="text-center py-12 border rounded-lg bg-muted/20">
           <CalendarOff className="size-12 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground text-sm">
-            No hay excepciones configuradas. Agregá feriados u horarios especiales.
+            No hay excepciones configuradas
           </p>
         </div>
       ) : (

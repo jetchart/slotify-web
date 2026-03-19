@@ -118,7 +118,7 @@ export default function ResourcesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Agendas</h2>
-          <p className="text-sm text-muted-foreground">Gestioná las canchas, salas u otras agendas disponibles para reservar.</p>
+          <p className="text-sm text-muted-foreground">Gestioná tus agendas</p>
         </div>
         <Button onClick={openCreate} className="self-start sm:self-auto">
           <Plus className="size-4" />

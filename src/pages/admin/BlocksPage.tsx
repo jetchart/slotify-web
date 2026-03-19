@@ -9,7 +9,7 @@ export default function BlocksPage() {
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Bloqueos</h2>
         <p className="text-sm text-muted-foreground">
-          Bloqueos recurrentes por día de la semana (ej: todos los jueves de 10 a 12).
+          Bloqueos recurrentes por día de la semana (ej: todos los lunes de 12 a 13 almuerzo).
         </p>
       </div>
 

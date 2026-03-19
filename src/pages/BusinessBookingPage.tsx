@@ -239,7 +239,7 @@ export default function BusinessBookingPage() {
                     <SelectContent>
                       {resources.map((r) => (
                         <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name} — {r.slotMinutes} min
+                          {r.name} ({r.slotMinutes})
                         </SelectItem>
                       ))}
                     </SelectContent>
