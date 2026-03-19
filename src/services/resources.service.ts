@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch } from '@/api';
+import { apiDelete, apiGet, apiPost, apiPatch } from '@/api';
 import type { Resource, CreateResourceDto, UpdateResourceDto } from '@/types';
 
 export const resourcesService = {
@@ -16,5 +16,9 @@ export const resourcesService = {
 
   update(id: number, dto: UpdateResourceDto) {
     return apiPatch<Resource>(`/admin/resources/${id}`, dto);
+  },
+
+  delete(id: number) {
+    return apiDelete<void>(`/admin/resources/${id}`);
   },
 };

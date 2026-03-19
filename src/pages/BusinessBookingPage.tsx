@@ -37,6 +37,11 @@ function saveCustomerData(data: CustomerData) {
   localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(data));
 }
 
+function getTodayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function BusinessBookingPage() {
   const { slug } = useParams<{ slug: string }>();
   const [bId, setBId] = useState<number | null>(null);
@@ -49,7 +54,7 @@ export default function BusinessBookingPage() {
 
   const selectedResource = resources.find((r) => String(r.id) === selectedResourceId) ?? null;
 
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getTodayLocal);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -255,7 +260,7 @@ export default function BusinessBookingPage() {
                 <Input
                   type="date"
                   value={date}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getTodayLocal()}
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>

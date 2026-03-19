@@ -14,7 +14,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, CalendarClock } from 'lucide-react';
+import { Plus, Pencil, CalendarClock, Trash2 } from 'lucide-react';
 import ResourceAvailabilityEditor from '@/pages/admin/ResourceAvailabilityEditor';
 
 export default function ResourcesPage() {
@@ -29,6 +29,9 @@ export default function ResourcesPage() {
   const [editing, setEditing] = useState<Resource | null>(null);
   const [form, setForm] = useState({ name: '', slotMinutes: 60, bufferMinutes: 0 });
   const [saving, setSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchResources = async () => {
     if (!businessId) return;
@@ -72,6 +75,30 @@ export default function ResourcesPage() {
     setEditing(r);
     setForm({ name: r.name, slotMinutes: r.slotMinutes, bufferMinutes: r.bufferMinutes });
     setDialogOpen(true);
+  };
+
+  const openDeleteDialog = (r: Resource) => {
+    setDeletingResource(r);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingResource) return;
+    setDeleting(true);
+    try {
+      await resourcesService.delete(deletingResource.id);
+      toast.success('Agenda eliminada');
+      setDeleteDialogOpen(false);
+      setDeletingResource(null);
+      if (expandedResourceId === deletingResource.id) {
+        setExpandedResourceId(null);
+      }
+      fetchResources();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -149,7 +176,7 @@ export default function ResourcesPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Duración slot</TableHead>
                 <TableHead>Buffer</TableHead>
-                <TableHead className="w-[140px]">Acciones</TableHead>
+                <TableHead className="w-[160px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,6 +201,15 @@ export default function ResourcesPage() {
                             disabled={!hasBusinessAvailability}
                           >
                             <CalendarClock className={`size-4 ${isExpanded ? 'rotate-180' : ''}`} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openDeleteDialog(r)}
+                            title="Eliminar"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -235,6 +271,28 @@ export default function ResourcesPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar agenda</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro de que querés eliminar esta agenda?
+            {deletingResource && (
+              <span className="block font-medium text-foreground mt-2">{deletingResource.name}</span>
+            )}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Eliminando...' : 'Eliminar'}
             </Button>
           </DialogFooter>
         </DialogContent>
