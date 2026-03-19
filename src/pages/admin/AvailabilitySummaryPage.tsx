@@ -18,6 +18,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,6 +46,7 @@ import {
   Ban,
   CalendarOff,
   Clock,
+  Trash2,
 } from 'lucide-react';
 
 const DAY_NAMES: Record<number, string> = {
@@ -43,8 +59,31 @@ const DAY_NAMES: Record<number, string> = {
   7: 'Dom',
 };
 
+const BLOCK_DAY_NAMES: Record<number, string> = {
+  0: 'Domingo',
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+};
+
 function formatTime(t: string) {
   return t.slice(0, 5);
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${month}/${day}/${year}`;
+}
+
+function formatDateRange(dateFrom: string, dateTo: string) {
+  if (dateFrom === dateTo) return formatDate(dateFrom);
+  return `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
 }
 
 export default function AvailabilitySummaryPage() {
@@ -68,6 +107,19 @@ export default function AvailabilitySummaryPage() {
   const [previewResourceId, setPreviewResourceId] = useState<number | null>(null);
   const [previewSlots, setPreviewSlots] = useState<Slot[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const [exceptionsModalOpen, setExceptionsModalOpen] = useState(false);
+  const [exceptionsModalData, setExceptionsModalData] = useState<Exception[]>([]);
+  const [exceptionsModalTitle, setExceptionsModalTitle] = useState('');
+  const [exceptionsModalResourceId, setExceptionsModalResourceId] = useState<number | null>(null);
+
+  const [deleteExceptionDialogOpen, setDeleteExceptionDialogOpen] = useState(false);
+  const [deletingException, setDeletingException] = useState<Exception | null>(null);
+  const [deletingExceptionInProgress, setDeletingExceptionInProgress] = useState(false);
+
+  const [blocksModalOpen, setBlocksModalOpen] = useState(false);
+  const [blocksModalData, setBlocksModalData] = useState<AvailabilityBlock[]>([]);
+  const [blocksModalTitle, setBlocksModalTitle] = useState('');
 
   useEffect(() => {
     if (!businessId) return;
@@ -117,8 +169,54 @@ export default function AvailabilitySummaryPage() {
       .finally(() => setLoadingPreview(false));
   }, [previewResourceId, previewDate]);
 
-  const businessExceptionsCount = exceptions.filter((e) => !e.resourceId).length;
-  const businessBlocksCount = blocks.filter((b) => !b.resourceId).length;
+  const businessExceptions = exceptions.filter((e) => !e.resourceId);
+  const businessBlocks = blocks.filter((b) => !b.resourceId);
+  const businessExceptionsCount = businessExceptions.length;
+  const businessBlocksCount = businessBlocks.length;
+
+  const openExceptionsModal = (items: Exception[], title: string, resourceId?: number | null) => {
+    setExceptionsModalData(items);
+    setExceptionsModalTitle(title);
+    setExceptionsModalResourceId(resourceId ?? null);
+    setExceptionsModalOpen(true);
+  };
+
+  const openBlocksModal = (items: AvailabilityBlock[], title: string) => {
+    setBlocksModalData(items);
+    setBlocksModalTitle(title);
+    setBlocksModalOpen(true);
+  };
+
+  const canDeleteException = (ex: Exception) => {
+    if (!exceptionsModalResourceId) return true;
+    return ex.resourceId === exceptionsModalResourceId;
+  };
+
+  const openDeleteExceptionDialog = (ex: Exception) => {
+    setDeletingException(ex);
+    setDeleteExceptionDialogOpen(true);
+  };
+
+  const handleDeleteException = async () => {
+    if (!businessId || !deletingException) return;
+    setDeletingExceptionInProgress(true);
+    try {
+      await exceptionsService.delete(
+        businessId,
+        deletingException.id,
+        deletingException.resourceId ?? undefined
+      );
+      toast.success('Excepción eliminada');
+      setDeleteExceptionDialogOpen(false);
+      setDeletingException(null);
+      setExceptionsModalData((prev) => prev.filter((e) => e.id !== deletingException.id));
+      setExceptions((prev) => prev.filter((e) => e.id !== deletingException.id));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar');
+    } finally {
+      setDeletingExceptionInProgress(false);
+    }
+  };
 
   const getEffectiveRulesForResource = (resourceId: number) => {
     const custom = resourceRules.get(resourceId) ?? [];
@@ -142,11 +240,16 @@ export default function AvailabilitySummaryPage() {
       .map(([day, v]) => ({ day, ...v }));
   };
 
-  const getResourceExceptionsCount = (resourceId: number) =>
-    exceptions.filter((e) => e.resourceId === resourceId || !e.resourceId).length;
+  const getResourceExceptions = (resourceId: number) =>
+    exceptions.filter((e) => e.resourceId === resourceId || !e.resourceId);
 
-  const getResourceBlocksCount = (resourceId: number) =>
-    blocks.filter((b) => b.resourceId === resourceId || !b.resourceId).length;
+  const getResourceBlocks = (resourceId: number) =>
+    blocks.filter((b) => b.resourceId === resourceId || !b.resourceId);
+
+  const getResourceName = (resourceId: number | null | undefined) => {
+    if (!resourceId) return 'Todas las agendas';
+    return resources.find((r) => r.id === resourceId)?.name ?? '—';
+  };
 
   const availableSlotsCount = previewSlots.filter((s) => !s.isBooked).length;
 
@@ -202,18 +305,26 @@ export default function AvailabilitySummaryPage() {
                     <CalendarOff className="size-4" />
                     Excepciones
                   </div>
-                  <p className="text-sm">
+                  <button
+                    type="button"
+                    onClick={() => openExceptionsModal(businessExceptions, 'Excepciones del negocio')}
+                    className="text-sm text-primary hover:underline font-medium"
+                  >
                     {businessExceptionsCount} {businessExceptionsCount === 1 ? 'excepción' : 'excepciones'}
-                  </p>
+                  </button>
                 </div>
                 <div className="rounded-lg border p-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
                     <Ban className="size-4" />
                     Bloqueos
                   </div>
-                  <p className="text-sm">
+                  <button
+                    type="button"
+                    onClick={() => openBlocksModal(businessBlocks, 'Bloqueos del negocio')}
+                    className="text-sm text-primary hover:underline font-medium"
+                  >
                     {businessBlocksCount} {businessBlocksCount === 1 ? 'bloqueo' : 'bloqueos'}
-                  </p>
+                  </button>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => navigate('/admin/business')}>
@@ -231,8 +342,8 @@ export default function AvailabilitySummaryPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {resources.map((r) => {
                   const effective = getEffectiveRulesForResource(r.id);
-                  const exCount = getResourceExceptionsCount(r.id);
-                  const blkCount = getResourceBlocksCount(r.id);
+                  const resourceExs = getResourceExceptions(r.id);
+                  const resourceBlks = getResourceBlocks(r.id);
                   return (
                     <Card key={r.id}>
                       <CardHeader className="pb-2">
@@ -254,9 +365,21 @@ export default function AvailabilitySummaryPage() {
                             </Badge>
                           ))}
                         </div>
-                        <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>{exCount} excepciones</span>
-                          <span>{blkCount} bloqueos</span>
+                        <div className="flex gap-4 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => openExceptionsModal(resourceExs, `Excepciones · ${r.name}`, r.id)}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            {resourceExs.length} excepciones
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openBlocksModal(resourceBlks, `Bloqueos · ${r.name}`)}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            {resourceBlks.length} bloqueos
+                          </button>
                         </div>
                         <Button
                           variant="ghost"
@@ -355,6 +478,149 @@ export default function AvailabilitySummaryPage() {
           )}
         </>
       )}
+
+      {/* Modal Excepciones */}
+      <Dialog open={exceptionsModalOpen} onOpenChange={setExceptionsModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{exceptionsModalTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 -mx-6 px-6">
+            {exceptionsModalData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No hay excepciones.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Horarios</TableHead>
+                    <TableHead>Aplica a</TableHead>
+                    <TableHead className="w-[80px]">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {exceptionsModalData.map((ex) => (
+                    <TableRow key={ex.id}>
+                      <TableCell className="font-medium capitalize">
+                        {formatDateRange(ex.dateFrom, ex.dateTo)}
+                      </TableCell>
+                      <TableCell>
+                        {ex.isClosed ? (
+                          <Badge variant="destructive">Cerrado</Badge>
+                        ) : (
+                          <Badge variant="secondary">Abierto</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {(ex.isBlockedRange ?? (ex as { is_blocked_range?: boolean }).is_blocked_range) &&
+                        ex.startTime &&
+                        ex.endTime ? (
+                          <span className="text-sm">
+                            {ex.startTime.slice(0, 5)} - {ex.endTime.slice(0, 5)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Todo el día</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {getResourceName(ex.resourceId)}
+                      </TableCell>
+                      <TableCell>
+                        {canDeleteException(ex) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDeleteExceptionDialog(ex)}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteExceptionDialogOpen} onOpenChange={setDeleteExceptionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar excepción</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro de que querés eliminar esta excepción?
+            {deletingException && (
+              <span className="block mt-2 font-medium text-foreground capitalize">
+                {formatDateRange(deletingException.dateFrom, deletingException.dateTo)}
+              </span>
+            )}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteExceptionDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteException}
+              disabled={deletingExceptionInProgress}
+            >
+              {deletingExceptionInProgress ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Bloqueos */}
+      <Dialog open={blocksModalOpen} onOpenChange={setBlocksModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{blocksModalTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 -mx-6 px-6">
+            {blocksModalData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No hay bloqueos.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Día</TableHead>
+                    <TableHead>Desde</TableHead>
+                    <TableHead>Hasta</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Aplica a</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {blocksModalData.map((block) => (
+                    <TableRow key={block.id}>
+                      <TableCell className="font-medium">
+                        {BLOCK_DAY_NAMES[block.dayOfWeek] ?? `Día ${block.dayOfWeek}`}
+                      </TableCell>
+                      <TableCell>{formatTime(block.startLocalTime)}</TableCell>
+                      <TableCell>{formatTime(block.endLocalTime)}</TableCell>
+                      <TableCell>
+                        {block.description ? (
+                          <span className="text-sm">{block.description}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {getResourceName(block.resourceId)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
