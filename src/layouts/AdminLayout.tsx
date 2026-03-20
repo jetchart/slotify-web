@@ -52,7 +52,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (

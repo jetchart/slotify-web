@@ -54,7 +54,7 @@ export default function OnboardingPage() {
         const message = err instanceof Error ? err.message : String(err);
         if (message.includes('User not found')) {
           logout();
-          navigate('/login', { replace: true });
+          navigate('/', { replace: true });
         }
       }
     })();

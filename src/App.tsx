@@ -13,6 +13,7 @@ import BookingsPage from '@/pages/admin/BookingsPage';
 import UsersPage from '@/pages/admin/UsersPage';
 import BusinessPage from '@/pages/admin/BusinessPage';
 import AvailabilitySummaryPage from '@/pages/admin/AvailabilitySummaryPage';
+import HomePage from '@/pages/HomePage';
 import BookingPublicPage from '@/pages/BookingPublicPage';
 import BusinessBookingPage from '@/pages/BusinessBookingPage';
 import OnboardingPage from '@/pages/OnboardingPage';
@@ -23,6 +24,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/book/:resourceId" element={<BookingPublicPage />} />
@@ -42,7 +44,7 @@ export default function App() {
               </Route>
             </Route>
 
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Toaster richColors position="top-right" />
         </AuthProvider>
