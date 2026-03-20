@@ -30,17 +30,17 @@ export default function App() {
             <Route path="/book/:resourceId" element={<BookingPublicPage />} />
             <Route path="/:slug" element={<BusinessBookingPage />} />
 
-            <Route element={<AdminRoute />}>
-              <Route element={<AdminLayout />}>
-                <Route path="/admin" element={<RequireBusiness><RequireAvailability><DashboardPage /></RequireAvailability></RequireBusiness>} />
-                <Route path="/admin/business" element={<BusinessPage />} />
-                <Route path="/admin/resources" element={<RequireBusiness><RequireAvailability><ResourcesPage /></RequireAvailability></RequireBusiness>} />
-                <Route path="/admin/resources/:id/availability" element={<RequireBusiness><RequireAvailability><AvailabilityPage /></RequireAvailability></RequireBusiness>} />
-                <Route path="/admin/availability-summary" element={<RequireBusiness><RequireAvailability><AvailabilitySummaryPage /></RequireAvailability></RequireBusiness>} />
-                <Route path="/admin/bookings" element={<RequireBusiness><RequireAvailability><BookingsPage /></RequireAvailability></RequireBusiness>} />
-                <Route path="/admin/exceptions" element={<Navigate to="/admin/business?tab=excepciones" replace />} />
-                <Route path="/admin/blocks" element={<Navigate to="/admin/business?tab=bloqueos" replace />} />
-                <Route path="/admin/users" element={<UsersPage />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route element={<AdminRoute />}>
+                <Route index element={<RequireBusiness><RequireAvailability><DashboardPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="business" element={<BusinessPage />} />
+                <Route path="resources" element={<RequireBusiness><RequireAvailability><ResourcesPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="resources/:id/availability" element={<RequireBusiness><RequireAvailability><AvailabilityPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="availability-summary" element={<RequireBusiness><RequireAvailability><AvailabilitySummaryPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="bookings" element={<RequireBusiness><RequireAvailability><BookingsPage /></RequireAvailability></RequireBusiness>} />
+                <Route path="exceptions" element={<Navigate to="/admin/business?tab=excepciones" replace />} />
+                <Route path="blocks" element={<Navigate to="/admin/business?tab=bloqueos" replace />} />
+                <Route path="users" element={<UsersPage />} />
               </Route>
             </Route>
 
