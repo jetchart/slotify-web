@@ -17,6 +17,7 @@ import AvailabilitySummaryPage from '@/pages/admin/AvailabilitySummaryPage';
 import HomePage from '@/pages/HomePage';
 import BookingPublicPage from '@/pages/BookingPublicPage';
 import BusinessBookingPage from '@/pages/BusinessBookingPage';
+import ViewBookingPage from '@/pages/ViewBookingPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/book/:resourceId" element={<BookingPublicPage />} />
+            <Route path="/:slug/bookings/:id" element={<ViewBookingPage />} />
             <Route path="/:slug" element={<BusinessBookingPage />} />
 
             <Route path="/admin" element={<AdminLayout />}>

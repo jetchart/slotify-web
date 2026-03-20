@@ -125,6 +125,14 @@ export interface Booking {
   updatedAt: string;
 }
 
+/** Respuesta de GET /public/{slug}/bookings/{id} */
+export interface PublicBookingView {
+  business: Business;
+  resource: Resource;
+  customer: Customer;
+  booking: Booking;
+}
+
 export interface Customer {
   id: number;
   businessId: number;

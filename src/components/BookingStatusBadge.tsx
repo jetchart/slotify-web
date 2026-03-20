@@ -2,18 +2,19 @@ import { Badge } from '@/components/ui/badge';
 import { BookingStatus } from '@/types';
 
 interface BookingStatusBadgeProps {
-  status: BookingStatus;
+  status: BookingStatus | string;
 }
 
-export function BookingStatusBadge({ status }: BookingStatusBadgeProps) {
-  const config = {
-    pending: { label: 'Pendiente', variant: 'secondary' as const },
-    confirmed: { label: 'Confirmado', variant: 'default' as const },
-    cancelled: { label: 'Cancelado', variant: 'destructive' as const },
-    no_show: { label: 'Ausente', variant: 'outline' as const },
-  };
+const STATUS_CONFIG: Record<string, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline' }> = {
+  pending: { label: 'Pendiente', variant: 'secondary' },
+  confirmed: { label: 'Confirmado', variant: 'default' },
+  cancelled: { label: 'Cancelado', variant: 'destructive' },
+  no_show: { label: 'Ausente', variant: 'outline' },
+};
 
-  const { label, variant } = config[status];
+export function BookingStatusBadge({ status }: BookingStatusBadgeProps) {
+  const normalized = status?.toLowerCase?.() ?? status;
+  const { label, variant } = STATUS_CONFIG[normalized] ?? { label: String(status ?? '—'), variant: 'outline' as const };
 
   return <Badge variant={variant}>{label}</Badge>;
 }

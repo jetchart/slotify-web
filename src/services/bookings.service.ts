@@ -1,11 +1,17 @@
 import { apiPost, apiGet, apiPut } from '@/api';
-import type { Booking, PublicCreateBookingDto, BookingStatus } from '@/types';
+import type { Booking, PublicBookingView, PublicCreateBookingDto, BookingStatus } from '@/types';
 
 export const bookingsService = {
   createPublic(dto: PublicCreateBookingDto) {
     return apiPost<Booking>('/public/bookings', dto);
   },
 
+  /** Obtener turno por ID (ruta pública, para link por mail) */
+  getPublic(slug: string, bookingId: number) {
+    return apiGet<PublicBookingView>(`/public/${slug}/bookings/${bookingId}`);
+  },
+
+  /** Cancelar turno (admin o link público) */
   cancel(bookingId: number) {
     return apiPost<Booking>(`/bookings/${bookingId}/cancel`);
   },
