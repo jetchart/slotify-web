@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -165,7 +166,34 @@ export default function ResourcesPage() {
       )}
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Duración slot</TableHead>
+                <TableHead>Buffer</TableHead>
+                <TableHead className="w-[160px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Skeleton className="size-9" />
+                      <Skeleton className="size-9" />
+                      <Skeleton className="size-9" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       ) : resources.length === 0 ? (
         <p className="text-muted-foreground text-sm">No hay agendas creadas todavía.</p>
       ) : (

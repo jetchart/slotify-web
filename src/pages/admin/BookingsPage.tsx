@@ -16,6 +16,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -196,7 +197,33 @@ export default function BookingsPage() {
       </p>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Horario</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="w-[200px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-8 w-24" />
+                      <Skeleton className="h-8 w-20" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       ) : !selectedResource ? (
         <p className="text-muted-foreground text-sm">Seleccioná una agenda para ver los slots.</p>
       ) : slots.length === 0 ? (

@@ -13,6 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -158,7 +159,32 @@ export default function BusinessBlocksManager({
         </div>
 
         {loading ? (
-          <p className="text-muted-foreground text-sm">Cargando...</p>
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Día</TableHead>
+                  <TableHead>Desde</TableHead>
+                  <TableHead>Hasta</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  {resourceId && <TableHead>Origen</TableHead>}
+                  <TableHead className="w-[100px]">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    {resourceId && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
+                    <TableCell><Skeleton className="size-8" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : blocks.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-8">
             No hay bloqueos configurados.

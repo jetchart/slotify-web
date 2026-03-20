@@ -6,6 +6,7 @@ import { resourcesService } from '@/services/resources.service';
 import type { Booking, Resource } from '@/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Box,
   CalendarDays,
@@ -199,7 +200,57 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-6 w-48 mb-3" />
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-lg border p-3 flex items-center gap-3">
+                  <Skeleton className="size-8 rounded-md" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-10" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Skeleton className="h-6 w-52 mb-3" />
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-lg border p-3 flex items-center gap-3">
+                  <Skeleton className="size-8 rounded-md" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-10" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-64 mt-2" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div className="flex gap-3">
+                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                ))}
+              </div>
+              <Skeleton className="h-4 w-32 mt-3" />
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <>
           {/* Hoy */}

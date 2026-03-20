@@ -13,6 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -170,7 +171,30 @@ export default function ExceptionsPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Horarios</TableHead>
+                <TableHead>Aplica a</TableHead>
+                <TableHead className="w-[100px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="size-8" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       ) : exceptions.length === 0 ? (
         <div className="text-center py-12 border rounded-lg bg-muted/20">
           <CalendarOff className="size-12 mx-auto text-muted-foreground mb-3" />

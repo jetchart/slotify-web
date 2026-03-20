@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, ChevronLeft, CalendarDays, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { businessService } from '@/services/business.service';
 
 const CUSTOMER_STORAGE_KEY = 'bookingCustomerData';
@@ -248,7 +249,7 @@ export default function BusinessBookingPage() {
               <div className="flex-1 space-y-1">
                 <Label>Agenda</Label>
                 {loadingResources ? (
-                  <div className="h-9 rounded-md bg-muted animate-pulse" />
+                  <Skeleton className="h-9 w-full" />
                 ) : (
                   <Select
                     value={selectedResourceId}
@@ -293,7 +294,7 @@ export default function BusinessBookingPage() {
             {!selectedResource ? null : loadingSlots ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="h-11 rounded-lg bg-muted animate-pulse" />
+                  <Skeleton key={i} className="h-11 rounded-lg" />
                 ))}
               </div>
             ) : slots.length === 0 ? (

@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import BusinessCreateForm from '@/components/BusinessCreateForm';
+import { Skeleton } from '@/components/ui/skeleton';
 import BusinessExceptionsManager from '@/components/BusinessExceptionsManager';
 import BusinessBlocksManager from '@/components/BusinessBlocksManager';
 import { useAvailability } from '@/context/AvailabilityContext';
@@ -343,7 +344,24 @@ export default function BusinessPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {loadingRules ? (
-                  <p className="text-sm text-muted-foreground">Cargando reglas...</p>
+                  <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="space-y-3 pb-2 border-b last:border-0 last:pb-0">
+                        <Skeleton className="h-4 w-24" />
+                        <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                          <div className="space-y-1 flex-1 sm:w-32">
+                            <Skeleton className="h-4 w-12" />
+                            <Skeleton className="h-9 w-full" />
+                          </div>
+                          <div className="space-y-1 flex-1 sm:w-32">
+                            <Skeleton className="h-4 w-12" />
+                            <Skeleton className="h-9 w-full" />
+                          </div>
+                          <Skeleton className="size-9 shrink-0" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <>
                     {!showScheduleEditor ? (

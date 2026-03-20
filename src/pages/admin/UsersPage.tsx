@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 
 export default function UsersPage() {
@@ -85,7 +86,39 @@ export default function UsersPage() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-9 w-28" />
+          </div>
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Rol</TableHead>
+                  <TableHead>Registrado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="size-6 rounded-full" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       ) : (
         <Tabs defaultValue="admins">
           <TabsList>

@@ -6,6 +6,7 @@ import { bookingsService } from '@/services/bookings.service';
 import type { Slot } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -106,7 +107,11 @@ export default function BookingPublicPage() {
         </div>
 
         {loading ? (
-          <p className="text-center text-muted-foreground text-sm">Cargando horarios...</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 rounded-lg" />
+            ))}
+          </div>
         ) : slots.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm">No hay horarios disponibles para esta fecha.</p>
         ) : slots.every((s) => s.isBooked) ? (
