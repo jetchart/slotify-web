@@ -73,6 +73,11 @@ export default function OnboardingPage() {
     setSlug(sanitizeSlug(name));
   }, [name, slugTouched]);
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -217,7 +222,7 @@ export default function OnboardingPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           ¿Cuenta incorrecta?{' '}
-          <button onClick={logout} className="underline hover:text-foreground transition-colors">
+          <button onClick={handleLogout} className="underline hover:text-foreground transition-colors">
             Cerrar sesión
           </button>
         </p>
