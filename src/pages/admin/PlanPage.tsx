@@ -7,12 +7,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Check, Zap, Sparkles, Crown } from 'lucide-react';
+import { Check, Zap, Sparkles, Crown, X } from 'lucide-react';
 
-const PLANS: { id: BusinessPlan; name: string; description: string; icon: React.ElementType }[] = [
-  { id: 'free', name: 'Free', description: 'Para empezar. Incluye lo esencial para gestionar turnos.', icon: Zap },
-  { id: 'starter', name: 'Starter', description: 'Más capacidades para crecer. Ideal para negocios en expansión.', icon: Sparkles },
-  { id: 'pro', name: 'Pro', description: 'Todo lo que necesitás. Para operaciones más demandantes.', icon: Crown },
+const PLANS: {
+  id: BusinessPlan;
+  name: string;
+  description: string;
+  icon: React.ElementType;
+  price: string;
+  features: string[];
+  featuresMissing: string[];
+}[] = [
+  {
+    id: 'free',
+    name: 'Free',
+    description: 'Ideal para probar',
+    icon: Zap,
+    price: '$0',
+    features: ['1 agenda', '20 turnos por mes'],
+    featuresMissing: ['Envío de mails'],
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    description: 'Más capacidades para crecer',
+    icon: Sparkles,
+    price: '$10.000',
+    features: ['3 agendas', '300 turnos por mes', 'Envío de mails'],
+    featuresMissing: [],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    description: 'Todo lo que necesitás',
+    icon: Crown,
+    price: '$15.000',
+    features: ['Agendas ilimitadas', 'Turnos ilimitados', 'Envío de mails'],
+    featuresMissing: [],
+  },
 ];
 
 function getPlanLabel(plan: BusinessPlan): string {
@@ -111,7 +143,7 @@ export default function PlanPage() {
           <div>
             <h3 className="text-lg font-medium mb-3">Elegir plan</h3>
             <div className="grid gap-4 sm:grid-cols-3">
-              {PLANS.map(({ id, name, description, icon: Icon }) => {
+              {PLANS.map(({ id, name, description, icon: Icon, price, features, featuresMissing }) => {
                 const isCurrent = currentPlan === id;
                 const isUpdating = updating === id;
                 return (
@@ -131,10 +163,25 @@ export default function PlanPage() {
                       </div>
                       <CardTitle className="text-lg">{name}</CardTitle>
                       <CardDescription className="text-sm">{description}</CardDescription>
+                      <p className="text-2xl font-semibold pt-1">{price}</p>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                      <ul className="space-y-2 text-sm">
+                        {features.map((f) => (
+                          <li key={f} className="flex items-center gap-2">
+                            <Check className="size-4 text-green-500 shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                        {featuresMissing.map((f) => (
+                          <li key={f} className="flex items-center gap-2">
+                            <X className="size-4 text-destructive shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
                       <Button
-                        variant={isCurrent ? 'secondary' : 'default'}
+                        variant={isCurrent ? 'outline' : 'default'}
                         className="w-full"
                         disabled={isCurrent || isUpdating}
                         onClick={() => handleSelectPlan(id)}
