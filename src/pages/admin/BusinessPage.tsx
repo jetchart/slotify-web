@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { availabilityService } from '@/services/availability.service';
@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarIcon, Plus, Save, Trash2, Info, Pencil, X, Check } from 'lucide-react';
+import { Plus, Save, Trash2, Info, Pencil, X, Check } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -20,6 +21,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import BusinessExceptionsManager from '@/components/BusinessExceptionsManager';
 import BusinessBlocksManager from '@/components/BusinessBlocksManager';
 import { useAvailability } from '@/context/AvailabilityContext';
+
+const PLAN_LABELS: Record<string, string> = {
+  free: 'Free',
+  starter: 'Starter',
+  pro: 'Pro',
+};
 
 const DAY_NAMES: Record<number, string> = {
   1: 'Lunes',
@@ -56,7 +63,7 @@ export default function BusinessPage() {
   const [loadingAgendas, setLoadingAgendas] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<RuleForm[]>([]);
-  const [business, setBusiness] = useState<Pick<Business, 'name' | 'description' | 'slug' | 'maxBookingWindowDays' | 'isBookingBlocked'> | null>(null);
+  const [business, setBusiness] = useState<Pick<Business, 'name' | 'description' | 'slug' | 'plan' | 'maxBookingWindowDays' | 'isBookingBlocked'> | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -115,6 +122,7 @@ export default function BusinessPage() {
             name: biz.name,
             description: biz.description,
             slug: biz.slug,
+            plan: biz.plan,
             maxBookingWindowDays: biz.maxBookingWindowDays,
             isBookingBlocked: biz.isBookingBlocked,
           });
@@ -239,6 +247,7 @@ export default function BusinessPage() {
         name: updated.name,
         description: updated.description,
         slug: updated.slug,
+        plan: updated.plan,
         maxBookingWindowDays: updated.maxBookingWindowDays,
         isBookingBlocked: updated.isBookingBlocked,
       });
@@ -298,6 +307,21 @@ export default function BusinessPage() {
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Slug</dt>
                 <dd className="font-medium font-mono text-xs">{business.slug || '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Plan</dt>
+                <dd className="font-medium">
+                  <Badge
+                              variant='default'
+                              className="text-xs"
+                            >
+                    <Link
+                      to="/admin/plan"
+                    >
+                      {business.plan ? PLAN_LABELS[business.plan] ?? business.plan : 'Free'}
+                    </Link>
+                  </Badge>
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Días máx. reserva</dt>

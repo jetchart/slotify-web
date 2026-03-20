@@ -12,6 +12,7 @@ import AvailabilityPage from '@/pages/admin/AvailabilityPage';
 import BookingsPage from '@/pages/admin/BookingsPage';
 import UsersPage from '@/pages/admin/UsersPage';
 import BusinessPage from '@/pages/admin/BusinessPage';
+import PlanPage from '@/pages/admin/PlanPage';
 import AvailabilitySummaryPage from '@/pages/admin/AvailabilitySummaryPage';
 import HomePage from '@/pages/HomePage';
 import BookingPublicPage from '@/pages/BookingPublicPage';
@@ -34,6 +35,7 @@ export default function App() {
               <Route element={<AdminRoute />}>
                 <Route index element={<RequireBusiness><RequireAvailability><DashboardPage /></RequireAvailability></RequireBusiness>} />
                 <Route path="business" element={<BusinessPage />} />
+                <Route path="plan" element={<PlanPage />} />
                 <Route path="resources" element={<RequireBusiness><RequireAvailability><ResourcesPage /></RequireAvailability></RequireBusiness>} />
                 <Route path="resources/:id/availability" element={<RequireBusiness><RequireAvailability><AvailabilityPage /></RequireAvailability></RequireBusiness>} />
                 <Route path="availability-summary" element={<RequireBusiness><RequireAvailability><AvailabilitySummaryPage /></RequireAvailability></RequireBusiness>} />

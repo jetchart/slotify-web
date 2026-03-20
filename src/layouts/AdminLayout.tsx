@@ -14,6 +14,7 @@ import {
   Users,
   LogOut,
   Menu,
+  CreditCard,
 } from 'lucide-react';
 
 const navItems = [
@@ -23,10 +24,11 @@ const navItems = [
   { to: '/admin/availability-summary', label: 'Resumen disponibilidad', icon: CalendarCheck },
   { to: '/admin/bookings', label: 'Turnos', icon: CalendarDays },
   { to: '/admin/users', label: 'Usuarios', icon: Users },
+  { to: '/admin/plan', label: 'Mi Plan', icon: CreditCard },
 ];
 
-/** Items visibles cuando no hay negocio creado (solo Mi Negocio y Usuarios) */
-const ITEMS_WITHOUT_BUSINESS = ['/admin/business', '/admin/users'];
+/** Items visibles cuando no hay negocio creado (solo Mi Negocio, Mi Plan y Usuarios) */
+const ITEMS_WITHOUT_BUSINESS = ['/admin/business', '/admin/plan', '/admin/users'];
 
 /** Items que requieren días/horarios definidos en Mi Negocio */
 const ITEMS_REQUIRING_AVAILABILITY = ['/admin', '/admin/resources', '/admin/availability-summary', '/admin/bookings'];

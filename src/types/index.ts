@@ -23,12 +23,19 @@ export interface User {
   deletedAt?: string;
 }
 
+export type BusinessPlan = 'free' | 'starter' | 'pro';
+
 export interface Business {
   id: number;
   name: string;
   slug: string;
   timezone: string;
   description: string | null;
+  plan?: BusinessPlan;
+  /** Fecha en que expira el plan actual (cuando hay downgrade programado) */
+  planExpiresAt?: string | null;
+  /** Plan al que pasará al finalizar el período (cuando hay downgrade programado) */
+  scheduledPlanAtPeriodEnd?: BusinessPlan | null;
   maxBookingWindowDays?: number;
   isBookingBlocked?: boolean;
   userId: number;

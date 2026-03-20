@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut } from '@/api';
-import type { Business, CreateBusinessDto, UpdateBusinessDto } from '@/types';
+import type { Business, BusinessPlan, CreateBusinessDto, UpdateBusinessDto } from '@/types';
 
 export const businessService = {
   create(dto: CreateBusinessDto) {
@@ -8,6 +8,10 @@ export const businessService = {
 
   update(businessId: number, dto: UpdateBusinessDto) {
     return apiPut<Business>(`/admin/businesses/${businessId}`, dto);
+  },
+
+  updatePlan(businessId: number, plan: BusinessPlan) {
+    return apiPut<Business>(`/admin/businesses/${businessId}/plan`, { plan });
   },
 
   async getById(businessId: number) {
