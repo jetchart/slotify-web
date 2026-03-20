@@ -121,8 +121,8 @@ export default function AdminLayout() {
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Mobile header */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 border-b bg-sidebar text-sidebar-foreground">
+        {/* Mobile header - sticky para que siempre sea visible al hacer scroll */}
+        <header className="md:hidden sticky top-0 z-10 shrink-0 flex items-center gap-3 px-4 py-3 border-b bg-sidebar text-sidebar-foreground">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="shrink-0">
