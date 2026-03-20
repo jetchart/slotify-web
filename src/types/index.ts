@@ -38,7 +38,8 @@ export interface CreateBusinessDto {
   name: string;
   slug: string;
   timezone: string;
-  description?: string;
+  description: string;
+  maxBookingWindowDays?: number;
 }
 
 export interface Resource {

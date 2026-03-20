@@ -65,6 +65,7 @@ export default function OnboardingPage() {
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [timezone, setTimezone] = useState('America/Argentina/Buenos_Aires');
+  const [maxBookingWindowDays, setMaxBookingWindowDays] = useState(30);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -88,14 +89,20 @@ export default function OnboardingPage() {
       toast.error('El identificador solo puede contener letras, números y guiones medios');
       return;
     }
+    const days = Number(maxBookingWindowDays);
+    if (!Number.isInteger(days) || days < 1 || days > 180) {
+      toast.error('Los días máximos de reserva deben ser un número entero entre 1 y 180');
+      return;
+    }
 
     setSaving(true);
     try {
       const business = await businessService.create({
         name: name.trim(),
         slug: cleanedSlug,
-        description: description.trim() || undefined,
+        description: description.trim(),
         timezone,
+        maxBookingWindowDays: days,
       });
       setBusinessId(business.id);
       navigate('/admin', { replace: true });
@@ -141,12 +148,13 @@ export default function OnboardingPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Descripción <span className="text-muted-foreground">(opcional)</span></Label>
+                <Label htmlFor="description">Descripción</Label>
                 <Input
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ej: Canchas de padel y tenis"
+                  required
                 />
               </div>
 
@@ -171,10 +179,26 @@ export default function OnboardingPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="maxBookingWindowDays">Días máximos de reserva</Label>
+                <Input
+                  id="maxBookingWindowDays"
+                  type="number"
+                  min={1}
+                  value={maxBookingWindowDays}
+                  onChange={(e) => setMaxBookingWindowDays(Number(e.target.value) || 30)}
+                  placeholder="30"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Hasta cuántos días en el futuro se pueden reservar turnos. Por defecto: 30.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="timezone">Zona horaria</Label>
                 <select
                   id="timezone"
                   value={timezone}
+                  disabled
                   onChange={(e) => setTimezone(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
