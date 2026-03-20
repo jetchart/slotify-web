@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, ChevronLeft, CalendarDays, Ban } from 'lucide-react';
+import { CheckCircle, ChevronLeft, CalendarDays, Ban, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { businessService } from '@/services/business.service';
@@ -68,6 +68,9 @@ export default function BusinessBookingPage() {
   const [form, setForm] = useState<CustomerData>(loadCustomerData);
   const [booking, setBooking] = useState(false);
   const [bookedSlot, setBookedSlot] = useState<Slot | null>(null);
+  const [bookedId, setBookedId] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
 
   // Resolve the business from slug (public booking routes)
   useEffect(() => {
@@ -149,7 +152,7 @@ export default function BusinessBookingPage() {
     if (!selectedResource || !selectedSlot) return;
     setBooking(true);
     try {
-      await bookingsService.createPublic({
+      const created = await bookingsService.createPublic({
         resourceId: selectedResource.id,
         startsAtUtc: selectedSlot.startsAtUtc,
         endsAtUtc: selectedSlot.endsAtUtc,
@@ -160,6 +163,8 @@ export default function BusinessBookingPage() {
       });
       saveCustomerData(form);
       setBookedSlot(selectedSlot);
+      setBookedId(created.id);
+      setCancelled(false);
       setStep('success');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al reservar');
@@ -168,9 +173,24 @@ export default function BusinessBookingPage() {
     }
   };
 
+  const handleCancelBooking = async () => {
+    if (!bookedId) return;
+    setCancelling(true);
+    try {
+      await bookingsService.cancel(bookedId);
+      setCancelled(true);
+      toast.success('Turno cancelado');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al cancelar');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const handleReset = () => {
     setSelectedSlot(null);
     setBookedSlot(null);
+    setBookedId(null);
     setStep('slot');
   };
 
@@ -409,12 +429,24 @@ export default function BusinessBookingPage() {
         {/* Success */}
         {step === 'success' && bookedSlot && selectedResource && (
           <div className="flex flex-col items-center text-center space-y-5 py-8">
-            <div className="rounded-full bg-green-100 dark:bg-green-950 p-5">
-              <CheckCircle className="size-12 text-green-600 dark:text-green-400" />
-            </div>
+            {cancelled ? (
+              <div className="rounded-full bg-muted p-5">
+                <XCircle className="size-12 text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="rounded-full bg-green-100 dark:bg-green-950 p-5">
+                <CheckCircle className="size-12 text-green-600 dark:text-green-400" />
+              </div>
+            )}
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold">Turno confirmado</h2>
-              <p className="text-muted-foreground">Tu reserva fue registrada exitosamente.</p>
+              <h2 className="text-2xl font-semibold">
+                {cancelled ? 'Turno cancelado' : 'Turno confirmado'}
+              </h2>
+              <p className="text-muted-foreground">
+                {cancelled
+                  ? 'La reserva fue cancelada correctamente.'
+                  : 'Tu reserva fue registrada exitosamente.'}
+              </p>
             </div>
             <div className="rounded-xl border bg-muted/40 p-5 w-full max-w-sm space-y-2 text-sm text-left">
               <div className="flex justify-between">
@@ -436,6 +468,15 @@ export default function BusinessBookingPage() {
                 <span className="font-medium">{form.customerName}</span>
               </div>
             </div>
+            {!cancelled && (
+              <Button
+                variant="destructive"
+                onClick={handleCancelBooking}
+                disabled={cancelling}
+              >
+                {cancelling ? 'Cancelando...' : 'Cancelar turno'}
+              </Button>
+            )}
           </div>
         )}
       </div>

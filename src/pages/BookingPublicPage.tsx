@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, CalendarDays } from 'lucide-react';
+import { CheckCircle, CalendarDays, XCircle } from 'lucide-react';
 
 export default function BookingPublicPage() {
   const { resourceId } = useParams<{ resourceId: string }>();
@@ -25,6 +25,9 @@ export default function BookingPublicPage() {
   const [form, setForm] = useState({ customerName: '', customerEmail: '', customerPhone: '', notes: '' });
   const [booking, setBooking] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [bookedId, setBookedId] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
 
   const fetchSlots = async () => {
     setLoading(true);
@@ -54,7 +57,7 @@ export default function BookingPublicPage() {
     }
     setBooking(true);
     try {
-      await bookingsService.createPublic({
+      const created = await bookingsService.createPublic({
         resourceId: resId,
         startsAtUtc: selectedSlot.startsAtUtc,
         endsAtUtc: selectedSlot.endsAtUtc,
@@ -63,6 +66,8 @@ export default function BookingPublicPage() {
         customerPhone: form.customerPhone,
         notes: form.notes?.trim(),
       });
+      setBookedId(created.id);
+      setCancelled(false);
       setSuccess(true);
       toast.success('Turno reservado con éxito');
     } catch (err: unknown) {
@@ -72,16 +77,56 @@ export default function BookingPublicPage() {
     }
   };
 
+  const handleCancelBooking = async () => {
+    if (!bookedId) return;
+    setCancelling(true);
+    try {
+      await bookingsService.cancel(bookedId);
+      setCancelled(true);
+      toast.success('Turno cancelado');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al cancelar');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSuccess(false);
+    setBookedId(null);
+    setSelectedSlot(null);
+  };
+
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8 space-y-4">
-            <CheckCircle className="size-16 mx-auto text-green-500" />
-            <h2 className="text-2xl font-semibold">Turno confirmado</h2>
+            {cancelled ? (
+              <XCircle className="size-16 mx-auto text-muted-foreground" />
+            ) : (
+              <CheckCircle className="size-16 mx-auto text-green-500" />
+            )}
+            <h2 className="text-2xl font-semibold">
+              {cancelled ? 'Turno cancelado' : 'Turno confirmado'}
+            </h2>
             <p className="text-muted-foreground">
-              Tu turno fue reservado exitosamente. Te enviamos los detalles a <strong>{form.customerEmail}</strong>.
+              {cancelled
+                ? 'La reserva fue cancelada correctamente.'
+                : `Tu turno fue reservado exitosamente. Te enviamos los detalles a ${form.customerEmail}.`}
             </p>
+            {!cancelled && (
+              <Button
+                variant="destructive"
+                onClick={handleCancelBooking}
+                disabled={cancelling}
+              >
+                {cancelling ? 'Cancelando...' : 'Cancelar turno'}
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleReset} className="w-full">
+              Reservar otro turno
+            </Button>
           </CardContent>
         </Card>
       </div>
