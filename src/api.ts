@@ -1,5 +1,15 @@
 import axios from 'axios';
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -57,17 +67,17 @@ api.interceptors.response.use(
           }
         }
       }
-      return Promise.reject(new Error(message));
+      return Promise.reject(new ApiError(message, status));
     }
 
     if (error.code === 'ECONNABORTED') {
-      return Promise.reject(new Error('La solicitud tardó demasiado. Intentalo de nuevo.'));
+      return Promise.reject(new ApiError('La solicitud tardó demasiado. Intentalo de nuevo.'));
     }
     if (error.message === 'Network Error') {
-      return Promise.reject(new Error('No se pudo conectar al servidor.'));
+      return Promise.reject(new ApiError('No se pudo conectar al servidor.'));
     }
 
-    return Promise.reject(new Error('Error inesperado.'));
+    return Promise.reject(new ApiError('Error inesperado.'));
   }
 );
 
