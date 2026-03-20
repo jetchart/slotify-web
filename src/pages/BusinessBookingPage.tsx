@@ -436,9 +436,6 @@ export default function BusinessBookingPage() {
                 <span className="font-medium">{form.customerName}</span>
               </div>
             </div>
-            <Button variant="outline" onClick={handleReset}>
-              Reservar otro turno
-            </Button>
           </div>
         )}
       </div>

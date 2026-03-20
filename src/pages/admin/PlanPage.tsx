@@ -25,7 +25,7 @@ const PLANS: {
     icon: Zap,
     price: '$0',
     features: ['1 agenda', '20 turnos por mes'],
-    featuresMissing: ['Envío de mails'],
+    featuresMissing: ['Envío de mails', 'Evento en el calendario'],
   },
   {
     id: 'starter',
@@ -34,7 +34,7 @@ const PLANS: {
     icon: Sparkles,
     price: '$10.000',
     features: ['3 agendas', '300 turnos por mes', 'Envío de mails'],
-    featuresMissing: [],
+    featuresMissing: ['Evento en el calendario'],
   },
   {
     id: 'pro',
@@ -42,7 +42,7 @@ const PLANS: {
     description: 'Todo lo que necesitás',
     icon: Crown,
     price: '$15.000',
-    features: ['Agendas ilimitadas', 'Turnos ilimitados', 'Envío de mails'],
+    features: ['Agendas ilimitadas', 'Turnos ilimitados', 'Envío de mails', 'Evento en el calendario'],
     featuresMissing: [],
   },
 ];
