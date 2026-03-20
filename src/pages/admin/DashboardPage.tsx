@@ -259,7 +259,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                         <span className="font-medium tabular-nums">{formatTime(b.startsAtUtc)}</span>
                         <span className="text-muted-foreground">
-                          {resourceMap.get(b.resourceId) ?? `Agenda ${b.resourceId}`}
+                          [{resourceMap.get(b.resourceId) ?? `Agenda ${b.resourceId}`}]
                         </span>
                         <span className="font-medium">{b.customer?.name ?? '—'}</span>
                       </div>

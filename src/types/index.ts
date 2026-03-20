@@ -29,6 +29,8 @@ export interface Business {
   slug: string;
   timezone: string;
   description: string | null;
+  maxBookingWindowDays?: number;
+  isBookingBlocked?: boolean;
   userId: number;
   createdAt: string;
   updatedAt: string;
@@ -38,8 +40,17 @@ export interface CreateBusinessDto {
   name: string;
   slug: string;
   timezone: string;
-  description: string;
+  description?: string;
   maxBookingWindowDays?: number;
+}
+
+export interface UpdateBusinessDto {
+  name?: string;
+  slug?: string;
+  timezone?: string;
+  description?: string;
+  maxBookingWindowDays?: number;
+  isBookingBlocked?: boolean;
 }
 
 export interface Resource {

@@ -11,7 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarIcon, Plus, Save, Trash2, Info } from 'lucide-react';
+import { CalendarIcon, Plus, Save, Trash2, Info, Pencil, X, Check } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import BusinessCreateForm from '@/components/BusinessCreateForm';
 import BusinessExceptionsManager from '@/components/BusinessExceptionsManager';
 import BusinessBlocksManager from '@/components/BusinessBlocksManager';
@@ -52,7 +55,16 @@ export default function BusinessPage() {
   const [loadingAgendas, setLoadingAgendas] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<RuleForm[]>([]);
-  const [business, setBusiness] = useState<Pick<Business, 'name' | 'description' | 'slug'> | null>(null);
+  const [business, setBusiness] = useState<Pick<Business, 'name' | 'description' | 'slug' | 'maxBookingWindowDays' | 'isBookingBlocked'> | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    slug: '',
+    maxBookingWindowDays: 30,
+    isBookingBlocked: false,
+  });
+  const [savingBusiness, setSavingBusiness] = useState(false);
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [agendasCount, setAgendasCount] = useState(0);
 
@@ -98,7 +110,13 @@ export default function BusinessPage() {
       const businessPromise = (async () => {
         try {
           const biz = await businessService.getById(businessId);
-          setBusiness({ name: biz.name, description: biz.description, slug: biz.slug });
+          setBusiness({
+            name: biz.name,
+            description: biz.description,
+            slug: biz.slug,
+            maxBookingWindowDays: biz.maxBookingWindowDays,
+            isBookingBlocked: biz.isBookingBlocked,
+          });
         } catch {
           // Si el endpoint del negocio no existe en el backend,
           // igual mostramos días y horarios con placeholders.
@@ -181,24 +199,110 @@ export default function BusinessPage() {
     setShowScheduleEditor(true);
   };
 
+  const openEditDialog = () => {
+    if (!business) return;
+    setEditForm({
+      name: business.name,
+      description: business.description ?? '',
+      slug: business.slug,
+      maxBookingWindowDays: business.maxBookingWindowDays ?? 30,
+      isBookingBlocked: business.isBookingBlocked ?? false,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveBusiness = async () => {
+    if (!businessId || !editForm.name.trim()) {
+      toast.error('El nombre es obligatorio');
+      return;
+    }
+    if (!editForm.slug.trim()) {
+      toast.error('El slug es obligatorio');
+      return;
+    }
+    const days = Number(editForm.maxBookingWindowDays);
+    if (!Number.isInteger(days) || days < 1) {
+      toast.error('Los días máximos de reserva deben ser un número entero mayor a 0');
+      return;
+    }
+    setSavingBusiness(true);
+    try {
+      const updated = await businessService.update(businessId, {
+        name: editForm.name.trim(),
+        description: editForm.description.trim() || undefined,
+        slug: editForm.slug.trim(),
+        maxBookingWindowDays: days,
+        isBookingBlocked: editForm.isBookingBlocked,
+      });
+      setBusiness({
+        name: updated.name,
+        description: updated.description,
+        slug: updated.slug,
+        maxBookingWindowDays: updated.maxBookingWindowDays,
+        isBookingBlocked: updated.isBookingBlocked,
+      });
+      setEditDialogOpen(false);
+      toast.success('Negocio actualizado');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar');
+    } finally {
+      setSavingBusiness(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">{business?.name ?? '—'}</h2>
-        <p className="text-sm text-muted-foreground">
-          {business?.description?.trim() ? business.description : 'Sin descripción'}
-        </p>
-
-        {!loadingAgendas && agendasCount > 0 && business?.slug && (
-          <div className="mt-3">
-            <Button asChild variant="link" size="sm">
-              <a href={`/${business.slug}`} target="_blank" rel="noreferrer noopener">
-                <CalendarIcon/>Ver como cliente
-              </a>
-            </Button>
-          </div>
-        )}
       </div>
+
+      {!loadingBusiness && business && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base">Datos del negocio</CardTitle>
+            <Button variant="outline" size="sm" onClick={openEditDialog}>
+              <Pencil className="size-4" />
+              Editar
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Nombre</dt>
+                <dd className="font-medium">{business.name}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Descripción</dt>
+                <dd className="font-medium">{business.description?.trim() || '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Slug</dt>
+                <dd className="font-medium font-mono text-xs">{business.slug || '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Días máx. reserva</dt>
+                <dd className="font-medium">{business.maxBookingWindowDays ?? 30}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Permitir reservas?</dt>
+                <dd className="font-medium flex items-center gap-1.5">
+                  {!business.isBookingBlocked ? (
+                    <>
+                      <Check className="size-4 text-green-600 dark:text-green-400" />
+                      Sí
+                    </>
+                  ) : (
+                    <>
+                      <X className="size-4 text-destructive" />
+                      No
+                    </>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+      )}
 
       {!businessId || loadingBusiness ? null : (
         <>
@@ -352,6 +456,75 @@ export default function BusinessPage() {
         </Tabs>
         </>
       )}
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar negocio</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nombre</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Nombre del negocio"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Descripción</Label>
+              <Input
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Descripción opcional"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-slug">Slug</Label>
+              <Input
+                id="edit-slug"
+                value={editForm.slug}
+                onChange={(e) => setEditForm((f) => ({ ...f, slug: e.target.value }))}
+                placeholder="identificador-url"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">Usado en la URL pública de reservas</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-maxBookingWindowDays">Días máximos de reserva</Label>
+              <Input
+                id="edit-maxBookingWindowDays"
+                type="number"
+                min={1}
+                value={editForm.maxBookingWindowDays}
+                onChange={(e) => setEditForm((f) => ({ ...f, maxBookingWindowDays: Number(e.target.value) || 30 }))}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit-isBookingBlocked"
+                checked={!editForm.isBookingBlocked}
+                onChange={(e) => setEditForm((f) => ({ ...f, isBookingBlocked: e.target.checked }))}
+                className="h-4 w-4 rounded border-input"
+              />
+              <Label htmlFor="edit-isBookingBlocked" className="cursor-pointer">
+                Permitir reservas?
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveBusiness} disabled={savingBusiness}>
+              {savingBusiness ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

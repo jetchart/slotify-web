@@ -4,13 +4,13 @@ import { toast } from 'sonner';
 import { resourcesService } from '@/services/resources.service';
 import { slotsService } from '@/services/slots.service';
 import { bookingsService } from '@/services/bookings.service';
-import type { Resource, Slot } from '@/types';
+import type { Business, Resource, Slot } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, ChevronLeft, CalendarDays } from 'lucide-react';
+import { CheckCircle, ChevronLeft, CalendarDays, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { businessService } from '@/services/business.service';
 
@@ -42,10 +42,15 @@ function getTodayLocal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function getMaxDate(maxBookingWindowDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + maxBookingWindowDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function BusinessBookingPage() {
   const { slug } = useParams<{ slug: string }>();
-  const [bId, setBId] = useState<number | null>(null);
-  const [businessName, setBusinessName] = useState<string | null>(null);
+  const [business, setBusiness] = useState<Business | null>(null);
 
   const [step, setStep] = useState<Step>('slot');
   const [resources, setResources] = useState<Resource[]>([]);
@@ -63,26 +68,23 @@ export default function BusinessBookingPage() {
   const [booking, setBooking] = useState(false);
   const [bookedSlot, setBookedSlot] = useState<Slot | null>(null);
 
-  // Resolve the business id from slug (public booking routes)
+  // Resolve the business from slug (public booking routes)
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       if (!slug) {
-        setBId(null);
-        setBusinessName(null);
+        setBusiness(null);
         return;
       }
       try {
         const biz = await businessService.getBySlug(slug);
         if (cancelled) return;
-        setBId(biz.id);
-        setBusinessName(biz.name);
+        setBusiness(biz);
       } catch {
         if (cancelled) return;
         toast.error('No se encontró el negocio');
-        setBId(null);
-        setBusinessName(null);
+        setBusiness(null);
       }
     };
 
@@ -92,9 +94,9 @@ export default function BusinessBookingPage() {
     };
   }, [slug]);
 
-  // Load resources
+  // Load resources (skip when booking is blocked)
   useEffect(() => {
-    if (!bId) {
+    if (!business?.id || business.isBookingBlocked) {
       setResources([]);
       setSelectedResourceId('');
       setLoadingResources(false);
@@ -105,7 +107,7 @@ export default function BusinessBookingPage() {
 
     const load = async () => {
       try {
-        const data = await resourcesService.getPublic(bId);
+        const data = await resourcesService.getPublic(business.id);
         setResources(data);
         if (data.length > 0) setSelectedResourceId(String(data[0].id));
       } catch {
@@ -115,7 +117,7 @@ export default function BusinessBookingPage() {
       }
     };
     load();
-  }, [bId]);
+  }, [business?.id, business?.isBookingBlocked]);
 
   // Load slots when resource or date changes
   useEffect(() => {
@@ -196,7 +198,7 @@ export default function BusinessBookingPage() {
           )}
           <div>
             <h1 className="font-semibold text-lg">
-              Reservar turno en {businessName ?? '—'}
+              Reservar turno en {business?.name ?? '—'}
             </h1>
             {selectedResource && step !== 'slot' && (
               <p className="text-sm text-muted-foreground">{selectedResource.name}</p>
@@ -223,6 +225,20 @@ export default function BusinessBookingPage() {
         {/* Step 1: Resource + date + slot */}
         {step === 'slot' && (
           <div className="space-y-5">
+            {business?.isBookingBlocked ? (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-6 flex flex-col items-center text-center gap-4">
+                <div className="rounded-full bg-amber-100 dark:bg-amber-900/50 p-4">
+                  <Ban className="size-10 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold">Reservas temporalmente deshabilitadas</h2>
+                  <p className="text-muted-foreground text-sm max-w-md">
+                    En este momento no se pueden realizar nuevas reservas. Por favor, intentá más tarde o contactá al negocio para más información.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
             <div>
               <h2 className="text-xl font-semibold">Elegí fecha y horario</h2>
             </div>
@@ -244,7 +260,7 @@ export default function BusinessBookingPage() {
                     <SelectContent>
                       {resources.map((r) => (
                         <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name} ({r.slotMinutes})
+                          {r.name} ({r.slotMinutes}min)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -261,6 +277,7 @@ export default function BusinessBookingPage() {
                   type="date"
                   value={date}
                   min={getTodayLocal()}
+                  max={getMaxDate(business?.maxBookingWindowDays ?? 30)}
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>
@@ -302,6 +319,8 @@ export default function BusinessBookingPage() {
                       </button>
                     ))}
                 </div>
+              </>
+            )}
               </>
             )}
           </div>
